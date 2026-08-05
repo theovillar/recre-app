@@ -3,7 +3,7 @@ import {
   Compass, PlusCircle, BookMarked, UserCircle2, Search, MapPin,
   CalendarDays, Users, X, ChevronRight, Sparkles, Heart, Check,
   Baby, Trees, Palette, Music4, Puzzle, Bike, Coffee, Dumbbell,
-  Landmark, Gamepad2, Film, Clock, ShieldCheck, Lock
+  Landmark, Gamepad2, Film, Clock, ShieldCheck, Lock, ChevronDown
 } from "lucide-react";
 
 // ---------- Design tokens ----------
@@ -32,6 +32,16 @@ const CATEGORIES = [
 
 const catMeta = (id) => CATEGORIES.find((c) => c.id === id) || CATEGORIES[0];
 
+const CITIES = [
+  { id: "lyon", label: "Lyon (69)" },
+  { id: "grenoble", label: "Grenoble (38)" },
+  { id: "chambery", label: "Chambéry (73)" },
+  { id: "annecy", label: "Annecy (74)" },
+  { id: "valence", label: "Valence (26)" },
+  { id: "paris", label: "Paris (75)" },
+];
+const cityLabel = (id) => (CITIES.find((c) => c.id === id) || {}).label || "Toutes les villes";
+
 const ADULT_CATEGORIES = [
   { id: "cafe", label: "Café / Brunch", icon: Coffee, color: COLORS.sun },
   { id: "sport", label: "Sport", icon: Dumbbell, color: COLORS.grass },
@@ -56,6 +66,7 @@ const INITIAL_ACTIVITIES = [
     id: 1,
     title: "Chasse aux trésors en forêt",
     category: "nature",
+    ville: "grenoble",
     lieu: "Parc de la Cascade",
     date: "Sam. 9 août · 10h00",
     age: "4-8 ans",
@@ -72,6 +83,7 @@ const INITIAL_ACTIVITIES = [
     id: 2,
     title: "Atelier peinture à doigts",
     category: "creatif",
+    ville: "lyon",
     lieu: "Chez Camille (jardin)",
     date: "Dim. 10 août · 14h30",
     age: "2-5 ans",
@@ -89,6 +101,7 @@ const INITIAL_ACTIVITIES = [
     id: 3,
     title: "Éveil musical en plein air",
     category: "musique",
+    ville: "chambery",
     lieu: "Square des Tilleuls",
     date: "Mer. 13 août · 16h00",
     age: "1-4 ans",
@@ -104,6 +117,7 @@ const INITIAL_ACTIVITIES = [
     id: 4,
     title: "Après-midi jeux de société géants",
     category: "jeux",
+    ville: "annecy",
     lieu: "Salle des fêtes",
     date: "Sam. 16 août · 15h00",
     age: "5-10 ans",
@@ -121,6 +135,7 @@ const INITIAL_ACTIVITIES = [
     id: 5,
     title: "Initiation vélo sans stabilisateurs",
     category: "sport",
+    ville: "valence",
     lieu: "Piste cyclable du Lac",
     date: "Dim. 17 août · 10h00",
     age: "4-7 ans",
@@ -145,6 +160,7 @@ const ADULT_MEETUPS = [
     id: 101,
     title: "Café des parents du quartier",
     category: "cafe",
+    ville: "paris",
     lieu: "Café Le Marronnier",
     date: "Mar. 12 août · 9h00",
     info: "Pendant que les enfants sont à l'école",
@@ -158,6 +174,7 @@ const ADULT_MEETUPS = [
     id: 102,
     title: "Footing détente entre parents",
     category: "sport",
+    ville: "grenoble",
     lieu: "Bords du canal",
     date: "Jeu. 14 août · 19h00",
     info: "Tous niveaux bienvenus",
@@ -171,6 +188,7 @@ const ADULT_MEETUPS = [
     id: 103,
     title: "Visite de l'expo photo",
     category: "culture",
+    ville: "lyon",
     lieu: "Médiathèque centrale",
     date: "Sam. 16 août · 11h00",
     info: "Visite libre, échange ensuite",
@@ -184,6 +202,7 @@ const ADULT_MEETUPS = [
     id: 104,
     title: "Atelier yoga en plein air",
     category: "bienetre",
+    ville: "chambery",
     lieu: "Parc des Tilleuls",
     date: "Dim. 17 août · 9h30",
     info: "Tapis non fourni",
@@ -197,6 +216,7 @@ const ADULT_MEETUPS = [
     id: 105,
     title: "Soirée jeux de société",
     category: "jeux",
+    ville: "annecy",
     lieu: "Chez Julien",
     date: "Ven. 22 août · 20h00",
     info: "Chacun amène un jeu ou une boisson",
@@ -213,6 +233,7 @@ const TEEN_MEETUPS = [
     id: 201,
     title: "Tournoi FIFA à la médiathèque",
     category: "jeuxvideo",
+    ville: "valence",
     lieu: "Médiathèque - espace jeunesse",
     date: "Mer. 13 août · 14h00",
     info: "12-15 ans · encadré par l'équipe jeunesse",
@@ -226,6 +247,7 @@ const TEEN_MEETUPS = [
     id: 202,
     title: "City stade basket entre ados",
     category: "sport",
+    ville: "grenoble",
     lieu: "City stade du parc",
     date: "Sam. 16 août · 15h00",
     info: "13-17 ans · coaché par un éducateur sportif",
@@ -239,6 +261,7 @@ const TEEN_MEETUPS = [
     id: 203,
     title: "Ciné-débat ado",
     category: "cinema",
+    ville: "lyon",
     lieu: "MJC du centre",
     date: "Dim. 17 août · 16h30",
     info: "14-17 ans · animé par la MJC",
@@ -252,6 +275,7 @@ const TEEN_MEETUPS = [
     id: 204,
     title: "Atelier BD & manga",
     category: "creatif",
+    ville: "chambery",
     lieu: "Médiathèque - espace jeunesse",
     date: "Mar. 19 août · 14h00",
     info: "11-14 ans · matériel fourni",
@@ -265,6 +289,7 @@ const TEEN_MEETUPS = [
     id: 205,
     title: "Répétition ouverte du groupe ado",
     category: "musique",
+    ville: "annecy",
     lieu: "Conservatoire municipal",
     date: "Ven. 22 août · 17h00",
     info: "12-17 ans · encadré par un professeur",
@@ -530,18 +555,19 @@ function shade(hex, amt) {
 }
 
 // ---------- Screens ----------
-function Explorer({ activities, favorites, onToggleFav, onOpen }) {
+function Explorer({ activities, favorites, onToggleFav, onOpen, city }) {
   const [query, setQuery] = useState("");
   const [cat, setCat] = useState("tous");
 
   const filtered = useMemo(() => {
     return activities.filter((a) => {
       const matchCat = cat === "tous" || a.category === cat;
+      const matchCity = city === "tous" || a.ville === city;
       const matchQuery = a.title.toLowerCase().includes(query.toLowerCase()) ||
         a.lieu.toLowerCase().includes(query.toLowerCase());
-      return matchCat && matchQuery;
+      return matchCat && matchCity && matchQuery;
     });
-  }, [activities, query, cat]);
+  }, [activities, query, cat, city]);
 
   return (
     <div>
@@ -836,8 +862,8 @@ function ValidationStatus({ validated, onToggleDemo }) {
           </div>
           <p style={{ fontFamily: "Nunito, sans-serif", fontSize: 13, color: "#5C5578", lineHeight: 1.5, margin: 0 }}>
             {validated
-              ? "Vous avez accès aux sorties enfants : Explorer, Créer une sortie et Mes sorties."
-              : "Pour la sécurité des enfants, l'accès aux sorties enfants (Explorer, Créer, Mes sorties) n'est ouvert qu'aux parents dont l'identité a été vérifiée par la mairie de leur commune. Vous recevrez une notification dès que ce sera fait."}
+              ? "Vous avez accès aux sorties enfants : Enfants, Créer une sortie et Mes sorties."
+              : "Pour la sécurité des enfants, l'accès aux sorties enfants (Enfants, Créer, Mes sorties) n'est ouvert qu'aux parents dont l'identité a été vérifiée par la mairie de leur commune. Vous recevrez une notification dès que ce sera fait."}
           </p>
           {onToggleDemo && (
             <button
@@ -876,6 +902,61 @@ function Legend({ color, label }) {
         {label}
       </span>
     </div>
+  );
+}
+
+function CityPicker({ city, onChange }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div style={{ position: "relative" }}>
+      <button
+        onClick={() => setOpen((o) => !o)}
+        style={{
+          display: "flex", alignItems: "center", gap: 6, background: "#fff",
+          border: "2px solid #F0EADB", borderRadius: 999, padding: "7px 12px 7px 10px",
+          cursor: "pointer", fontFamily: "Nunito, sans-serif",
+        }}
+      >
+        <MapPin size={15} color={COLORS.coral} />
+        <span style={{ fontWeight: 800, fontSize: 12.5, color: COLORS.ink, whiteSpace: "nowrap" }}>
+          {city === "tous" ? "Toutes les villes" : cityLabel(city)}
+        </span>
+        <ChevronDown size={14} color="#B7AF98" />
+      </button>
+
+      {open && (
+        <>
+          <div onClick={() => setOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 55 }} />
+          <div style={{
+            position: "absolute", top: "calc(100% + 6px)", right: 0, background: "#fff",
+            border: "2px solid #F0EADB", borderRadius: 16, padding: 8, minWidth: 190,
+            boxShadow: "0 12px 28px rgba(43,37,96,0.14)", zIndex: 56,
+          }}>
+            <CityOption label="Toutes les villes" active={city === "tous"} onClick={() => { onChange("tous"); setOpen(false); }} />
+            {CITIES.map((c) => (
+              <CityOption key={c.id} label={c.label} active={city === c.id} onClick={() => { onChange(c.id); setOpen(false); }} />
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+function CityOption({ label, active, onClick }) {
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%",
+        background: active ? "#FFF4DD" : "transparent", border: "none", borderRadius: 10,
+        padding: "9px 10px", cursor: "pointer", fontFamily: "Nunito, sans-serif",
+        fontWeight: active ? 800 : 700, fontSize: 13.5, color: COLORS.ink, textAlign: "left",
+      }}
+    >
+      {label}
+      {active && <Check size={14} color={COLORS.grass} />}
+    </button>
   );
 }
 
@@ -1042,17 +1123,18 @@ function CommunityCard({ item, categories, onOpen, favorite, onToggleFav }) {
   );
 }
 
-function CommunityExplorer({ title, subtitle, categories, items, favorites, onToggleFav, onOpen, emptyText }) {
+function CommunityExplorer({ title, subtitle, categories, items, favorites, onToggleFav, onOpen, emptyText, city }) {
   const [query, setQuery] = useState("");
   const [cat, setCat] = useState("tous");
 
   const filtered = useMemo(() => {
     return items.filter((a) => {
       const matchCat = cat === "tous" || a.category === cat;
+      const matchCity = city === "tous" || a.ville === city;
       const matchQuery = a.title.toLowerCase().includes(query.toLowerCase()) || a.lieu.toLowerCase().includes(query.toLowerCase());
-      return matchCat && matchQuery;
+      return matchCat && matchCity && matchQuery;
     });
-  }, [items, query, cat]);
+  }, [items, query, cat, city]);
 
   return (
     <div>
@@ -1192,6 +1274,7 @@ export default function RecreApp() {
   const [joinedAdult, setJoinedAdult] = useState([]);
   const [joinedTeen, setJoinedTeen] = useState([]);
   const [selectedCommunity, setSelectedCommunity] = useState(null); // { item, kind: "adult" | "teen" }
+  const [city, setCity] = useState("tous");
 
   const toggleFav = (id) =>
     setFavorites((f) => (f.includes(id) ? f.filter((x) => x !== id) : [...f, id]));
@@ -1223,11 +1306,11 @@ export default function RecreApp() {
   };
 
   const TABS_ALL = [
-    { id: "explorer", label: "Explorer", icon: Compass, kidsOnly: true },
+    { id: "explorer", label: "Enfants", icon: Compass, kidsOnly: true },
+    { id: "ados", label: "Ados", icon: Gamepad2 },
+    { id: "adultes", label: "Adultes", icon: Coffee },
     { id: "creer", label: "Créer", icon: PlusCircle, kidsOnly: true },
     { id: "mes-sorties", label: "Mes sorties", icon: BookMarked, kidsOnly: true },
-    { id: "adultes", label: "Adultes", icon: Coffee },
-    { id: "ados", label: "Ados", icon: Gamepad2 },
     { id: "profil", label: "Profil", icon: UserCircle2 },
   ];
   const TABS = TABS_ALL.filter((t) => !t.kidsOnly || parentValidated);
@@ -1265,22 +1348,25 @@ export default function RecreApp() {
           </span>
         </div>
 
-        {/* Desktop nav */}
-        <div className="desktop-nav" style={{ display: "none", gap: 6 }}>
-          {TABS.map((t) => (
-            <button
-              key={t.id}
-              onClick={() => setTab(t.id)}
-              style={{
-                display: "flex", alignItems: "center", gap: 6, border: "none", cursor: "pointer",
-                background: tab === t.id ? COLORS.ink : "transparent",
-                color: tab === t.id ? "#fff" : COLORS.ink,
-                padding: "9px 16px", borderRadius: 12, fontFamily: "Fredoka, sans-serif", fontWeight: 600, fontSize: 14.5,
-              }}
-            >
-              <t.icon size={16} /> {t.label}
-            </button>
-          ))}
+        {/* Desktop nav + sélecteur de ville */}
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <div className="desktop-nav" style={{ display: "none", gap: 6 }}>
+            {TABS.map((t) => (
+              <button
+                key={t.id}
+                onClick={() => setTab(t.id)}
+                style={{
+                  display: "flex", alignItems: "center", gap: 6, border: "none", cursor: "pointer",
+                  background: tab === t.id ? COLORS.ink : "transparent",
+                  color: tab === t.id ? "#fff" : COLORS.ink,
+                  padding: "9px 16px", borderRadius: 12, fontFamily: "Fredoka, sans-serif", fontWeight: 600, fontSize: 14.5,
+                }}
+              >
+                <t.icon size={16} /> {t.label}
+              </button>
+            ))}
+          </div>
+          <CityPicker city={city} onChange={setCity} />
         </div>
       </div>
 
@@ -1288,7 +1374,7 @@ export default function RecreApp() {
         maxWidth: 960, margin: "0 auto", padding: "0 20px 110px",
       }}>
         {tab === "explorer" && parentValidated && (
-          <Explorer activities={activities} favorites={favorites} onToggleFav={toggleFav} onOpen={setSelected} />
+          <Explorer activities={activities} favorites={favorites} onToggleFav={toggleFav} onOpen={setSelected} city={city} />
         )}
         {tab === "creer" && parentValidated && <CreateActivity onCreate={createActivity} />}
         {tab === "mes-sorties" && parentValidated && <MyOutings joined={joined} activities={activities} />}
@@ -1302,6 +1388,7 @@ export default function RecreApp() {
             onToggleFav={(id) => toggleFavCommunity("adult", id)}
             onOpen={(item) => setSelectedCommunity({ item, kind: "adult" })}
             emptyText="Aucune rencontre ne correspond. Essayez une autre recherche !"
+            city={city}
           />
         )}
         {tab === "ados" && (
@@ -1314,6 +1401,7 @@ export default function RecreApp() {
             onToggleFav={(id) => toggleFavCommunity("teen", id)}
             onOpen={(item) => setSelectedCommunity({ item, kind: "teen" })}
             emptyText="Aucune rencontre ne correspond. Essayez une autre recherche !"
+            city={city}
           />
         )}
         {tab === "profil" && (
