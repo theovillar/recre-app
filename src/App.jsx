@@ -152,18 +152,48 @@ const lieuAvecVille = (item) => (villeName(item.ville) ? `${item.lieu} · ${vill
 // ---------- Carte (projection simplifiée, sans tuiles externes) ----------
 const MAP_BOUNDS = { lonMin: -5.2, lonMax: 9.6, latMin: 41.3, latMax: 51.1 };
 const MAP_W = 600, MAP_H = 580;
-function project(lon, lat) {
-  const x = ((lon - MAP_BOUNDS.lonMin) / (MAP_BOUNDS.lonMax - MAP_BOUNDS.lonMin)) * MAP_W;
-  const y = ((MAP_BOUNDS.latMax - lat) / (MAP_BOUNDS.latMax - MAP_BOUNDS.latMin)) * MAP_H;
+function projectIn(bounds, lon, lat) {
+  const x = ((lon - bounds.lonMin) / (bounds.lonMax - bounds.lonMin)) * MAP_W;
+  const y = ((bounds.latMax - lat) / (bounds.latMax - bounds.latMin)) * MAP_H;
   return [x, y];
 }
+const project = (lon, lat) => projectIn(MAP_BOUNDS, lon, lat);
+
 // Contour très simplifié de la France métropolitaine, à but illustratif
+// (pas de vrai tracé officiel disponible ici, cette forme est approximative)
 const FRANCE_OUTLINE = [
   [2.37, 51.03], [3.06, 50.63], [7.75, 48.58], [7.59, 47.59], [6.15, 46.20],
   [7.26, 43.71], [7.50, 43.78], [5.37, 43.30], [2.90, 42.68], [1.45, 42.45],
   [-1.56, 43.48], [-1.20, 44.85], [-2.20, 47.25], [-4.49, 48.39], [-1.62, 49.65],
   [0.11, 49.49], [2.37, 51.03],
 ];
+
+// Un point représentatif par département (première ville connue de ce département),
+// utilisé pour afficher le numéro du département sur la carte — pas un vrai tracé de frontière.
+const DEPT_LABEL_POINTS = {};
+LOCAL_PLACES.forEach((p) => { if (p.dept && !DEPT_LABEL_POINTS[p.dept]) DEPT_LABEL_POINTS[p.dept] = p; });
+
+// Calcule la zone à afficher (bounds) en fonction de la recherche de localisation en cours
+function computeMapBounds(location) {
+  if (!location) return MAP_BOUNDS;
+  if (location.type === "departement") {
+    const p = DEPT_LABEL_POINTS[location.code];
+    if (!p) return MAP_BOUNDS;
+    const spanLon = 1.5, spanLat = 1.1;
+    return { lonMin: p.lon - spanLon, lonMax: p.lon + spanLon, latMin: p.lat - spanLat, latMax: p.lat + spanLat };
+  }
+  if (location.type === "commune") {
+    const kmSpan = Math.max(location.radius, 4) * 1.9;
+    const latSpan = kmSpan / 111;
+    const lonSpan = kmSpan / (111 * Math.cos((location.lat * Math.PI) / 180));
+    return {
+      lonMin: location.lon - lonSpan, lonMax: location.lon + lonSpan,
+      latMin: location.lat - latSpan, latMax: location.lat + latSpan,
+    };
+  }
+  return MAP_BOUNDS;
+}
+
 
 
 const ADULT_CATEGORIES = [
@@ -651,17 +681,20 @@ function Row({ icon, text }) {
   );
 }
 
-function MapView({ items, categories, onOpen }) {
+function MapView({ items, categories, onOpen, location }) {
   const [activeIdx, setActiveIdx] = useState(null);
+
+  const bounds = useMemo(() => computeMapBounds(location), [location]);
+  const zoomed = (bounds.lonMax - bounds.lonMin) < 5; // zone assez petite pour afficher les libellés
 
   const points = useMemo(() => {
     return items.map((it) => {
       const meta = CITY_META[it.ville];
       if (!meta) return null;
-      const [x, y] = project(meta.lon, meta.lat);
+      const [x, y] = projectIn(bounds, meta.lon, meta.lat);
       return { item: it, x, y, cat: metaFrom(categories, it.category) };
     }).filter(Boolean);
-  }, [items, categories]);
+  }, [items, categories, bounds]);
 
   // Regroupe les pins très proches (même ville) pour éviter qu'ils se superposent exactement
   const spread = useMemo(() => {
@@ -676,14 +709,84 @@ function MapView({ items, categories, onOpen }) {
     });
   }, [points]);
 
-  const outlinePoints = FRANCE_OUTLINE.map(([lon, lat]) => project(lon, lat).join(",")).join(" ");
+  // Villes de repère (avec ou sans sortie), utiles pour se situer sur la carte
+  const cityDots = useMemo(() => {
+    return LOCAL_PLACES.map((c) => {
+      const [x, y] = projectIn(bounds, c.lon, c.lat);
+      if (x < -20 || x > MAP_W + 20 || y < -20 || y > MAP_H + 20) return null;
+      return { ...c, x, y };
+    }).filter(Boolean);
+  }, [bounds]);
+
+  // Numéros de département visibles dans la zone affichée
+  const deptLabels = useMemo(() => {
+    return Object.entries(DEPT_LABEL_POINTS).map(([code, p]) => {
+      const [x, y] = projectIn(bounds, p.lon, p.lat);
+      if (x < 10 || x > MAP_W - 10 || y < 10 || y > MAP_H - 10) return null;
+      return { code, x, y };
+    }).filter(Boolean);
+  }, [bounds]);
+
+  const outlinePoints = FRANCE_OUTLINE.map(([lon, lat]) => projectIn(bounds, lon, lat).join(",")).join(" ");
   const active = activeIdx !== null ? spread[activeIdx] : null;
+
+  // Marqueur + rayon de la recherche en cours (le cas échéant)
+  let searchMarker = null;
+  if (location?.type === "commune") {
+    const [sx, sy] = projectIn(bounds, location.lon, location.lat);
+    let rx = 0, ry = 0;
+    if (location.radius > 0) {
+      const latSpan = location.radius / 111;
+      const lonSpan = location.radius / (111 * Math.cos((location.lat * Math.PI) / 180));
+      const pxPerDegLon = MAP_W / (bounds.lonMax - bounds.lonMin);
+      const pxPerDegLat = MAP_H / (bounds.latMax - bounds.latMin);
+      rx = lonSpan * pxPerDegLon;
+      ry = latSpan * pxPerDegLat;
+    }
+    searchMarker = { sx, sy, rx, ry };
+  }
 
   return (
     <div style={{ background: "#fff", border: "2px solid #F0EADB", borderRadius: 22, padding: 14, position: "relative" }}>
       <div style={{ position: "relative", width: "100%", aspectRatio: `${MAP_W} / ${MAP_H}`, overflow: "visible" }}>
         <svg viewBox={`0 0 ${MAP_W} ${MAP_H}`} width="100%" height="100%" style={{ display: "block" }}>
           <polygon points={outlinePoints} fill="#EAF4FB" stroke={COLORS.sky} strokeWidth={2.5} strokeLinejoin="round" />
+
+          {/* Villes de repère */}
+          {cityDots.map((c, i) => (
+            <g key={`c-${i}`} transform={`translate(${c.x},${c.y})`}>
+              <circle r={2.6} fill="#B7AF98" />
+              {zoomed && (
+                <text x={6} y={4} fontFamily="Nunito, sans-serif" fontSize={11} fontWeight={700} fill="#8A8399">
+                  {c.nom}
+                </text>
+              )}
+            </g>
+          ))}
+
+          {/* Numéros de département */}
+          {deptLabels.map((d) => (
+            <text
+              key={`d-${d.code}`} x={d.x} y={d.y - 12} textAnchor="middle"
+              fontFamily="Fredoka, sans-serif" fontSize={zoomed ? 15 : 11} fontWeight={600}
+              fill={COLORS.grape} opacity={0.55}
+            >
+              {d.code}
+            </text>
+          ))}
+
+          {/* Rayon de recherche */}
+          {searchMarker && searchMarker.rx > 0 && (
+            <ellipse cx={searchMarker.sx} cy={searchMarker.sy} rx={searchMarker.rx} ry={searchMarker.ry}
+              fill={COLORS.coral} fillOpacity={0.1} stroke={COLORS.coral} strokeWidth={1.5} strokeDasharray="5 4" />
+          )}
+          {searchMarker && (
+            <g transform={`translate(${searchMarker.sx},${searchMarker.sy})`}>
+              <circle r={5} fill={COLORS.coral} stroke="#fff" strokeWidth={2} />
+            </g>
+          )}
+
+          {/* Sorties */}
           {spread.map((p, i) => (
             <g
               key={i}
@@ -735,6 +838,12 @@ function MapView({ items, categories, onOpen }) {
           </div>
         )}
       </div>
+
+      {location && (
+        <div style={{ marginTop: 10, fontFamily: "Nunito, sans-serif", fontSize: 12, color: "#9A93AF", textAlign: "center" }}>
+          Carte centrée sur {locationLabel(location)}
+        </div>
+      )}
 
       {points.length === 0 && (
         <div style={{ textAlign: "center", padding: "20px 0 4px", color: "#9A93AF", fontFamily: "Nunito, sans-serif", fontSize: 13.5 }}>
@@ -851,7 +960,7 @@ function Explorer({ activities, favorites, onToggleFav, onOpen, location }) {
       <ViewToggle view={view} onChange={setView} />
 
       {view === "carte" ? (
-        <MapView items={filtered} categories={CATEGORIES} onOpen={onOpen} />
+        <MapView items={filtered} categories={CATEGORIES} onOpen={onOpen} location={location} />
       ) : (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(270px, 1fr))", gap: 14 }}>
           {filtered.map((a) => (
@@ -1532,7 +1641,7 @@ function CommunityExplorer({ title, subtitle, categories, items, favorites, onTo
       <ViewToggle view={view} onChange={setView} />
 
       {view === "carte" ? (
-        <MapView items={filtered} categories={categories} onOpen={onOpen} />
+        <MapView items={filtered} categories={categories} onOpen={onOpen} location={location} />
       ) : (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(270px, 1fr))", gap: 14 }}>
           {filtered.map((item) => (
