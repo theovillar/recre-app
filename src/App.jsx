@@ -146,6 +146,9 @@ function locationLabel(location) {
   return `${location.nom} · ${location.radius === 0 ? "ville exacte" : location.radius + " km"}`;
 }
 
+const villeName = (id) => (CITY_META[id] || {}).label || "";
+const lieuAvecVille = (item) => (villeName(item.ville) ? `${item.lieu} · ${villeName(item.ville)}` : item.lieu);
+
 
 const ADULT_CATEGORIES = [
   { id: "cafe", label: "Café / Brunch", icon: Coffee, color: COLORS.sun },
@@ -599,7 +602,7 @@ function ActivityCard({ activity, onOpen, favorite, onToggleFav }) {
       </div>
 
       <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 5 }}>
-        <Row icon={<MapPin size={14} color={COLORS.ink} />} text={activity.lieu} />
+        <Row icon={<MapPin size={14} color={COLORS.ink} />} text={lieuAvecVille(activity)} />
         <Row icon={<CalendarDays size={14} color={COLORS.ink} />} text={activity.date} />
       </div>
 
@@ -1218,7 +1221,7 @@ function DetailModal({ activity, onClose, joined, onJoin }) {
         </h2>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16 }}>
-          <Row icon={<MapPin size={15} color={COLORS.ink} />} text={activity.lieu} />
+          <Row icon={<MapPin size={15} color={COLORS.ink} />} text={lieuAvecVille(activity)} />
           <Row icon={<CalendarDays size={15} color={COLORS.ink} />} text={activity.date} />
           <Row icon={<Users size={15} color={COLORS.ink} />} text={`${activity.inscrits}/${activity.places} participants · organisé par ${activity.organisateur}`} />
         </div>
@@ -1322,7 +1325,7 @@ function CommunityCard({ item, categories, onOpen, favorite, onToggleFav }) {
       </div>
 
       <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 5 }}>
-        <Row icon={<MapPin size={14} color={COLORS.ink} />} text={item.lieu} />
+        <Row icon={<MapPin size={14} color={COLORS.ink} />} text={lieuAvecVille(item)} />
         <Row icon={<CalendarDays size={14} color={COLORS.ink} />} text={item.date} />
         {item.info && <Row icon={<Users size={14} color={COLORS.ink} />} text={item.info} />}
       </div>
@@ -1432,7 +1435,7 @@ function CommunityDetailModal({ item, categories, onClose, joined, onJoin, joinL
         </h2>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16 }}>
-          <Row icon={<MapPin size={15} color={COLORS.ink} />} text={item.lieu} />
+          <Row icon={<MapPin size={15} color={COLORS.ink} />} text={lieuAvecVille(item)} />
           <Row icon={<CalendarDays size={15} color={COLORS.ink} />} text={item.date} />
           <Row icon={<Users size={15} color={COLORS.ink} />} text={`${item.inscrits}/${item.places} participants · organisé par ${item.organisateur}`} />
           {item.info && <Row icon={<Sparkles size={15} color={COLORS.ink} />} text={item.info} />}
