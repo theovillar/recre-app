@@ -3,7 +3,7 @@ import {
   Compass, PlusCircle, BookMarked, UserCircle2, Search, MapPin,
   CalendarDays, Users, X, ChevronRight, Sparkles, Heart, Check,
   Baby, Trees, Palette, Music4, Puzzle, Bike, Coffee, Dumbbell,
-  Landmark, Gamepad2, Film, Clock, ShieldCheck, Lock, ChevronDown
+  Landmark, Gamepad2, Film, Clock, ShieldCheck, Lock, ChevronDown, List, Map
 } from "lucide-react";
 
 // ---------- Design tokens ----------
@@ -148,6 +148,22 @@ function locationLabel(location) {
 
 const villeName = (id) => (CITY_META[id] || {}).label || "";
 const lieuAvecVille = (item) => (villeName(item.ville) ? `${item.lieu} · ${villeName(item.ville)}` : item.lieu);
+
+// ---------- Carte (projection simplifiée, sans tuiles externes) ----------
+const MAP_BOUNDS = { lonMin: -5.2, lonMax: 9.6, latMin: 41.3, latMax: 51.1 };
+const MAP_W = 600, MAP_H = 580;
+function project(lon, lat) {
+  const x = ((lon - MAP_BOUNDS.lonMin) / (MAP_BOUNDS.lonMax - MAP_BOUNDS.lonMin)) * MAP_W;
+  const y = ((MAP_BOUNDS.latMax - lat) / (MAP_BOUNDS.latMax - MAP_BOUNDS.latMin)) * MAP_H;
+  return [x, y];
+}
+// Contour très simplifié de la France métropolitaine, à but illustratif
+const FRANCE_OUTLINE = [
+  [2.37, 51.03], [3.06, 50.63], [7.75, 48.58], [7.59, 47.59], [6.15, 46.20],
+  [7.26, 43.71], [7.50, 43.78], [5.37, 43.30], [2.90, 42.68], [1.45, 42.45],
+  [-1.56, 43.48], [-1.20, 44.85], [-2.20, 47.25], [-4.49, 48.39], [-1.62, 49.65],
+  [0.11, 49.49], [2.37, 51.03],
+];
 
 
 const ADULT_CATEGORIES = [
@@ -635,6 +651,100 @@ function Row({ icon, text }) {
   );
 }
 
+function MapView({ items, categories, onOpen }) {
+  const [activeIdx, setActiveIdx] = useState(null);
+
+  const points = useMemo(() => {
+    return items.map((it) => {
+      const meta = CITY_META[it.ville];
+      if (!meta) return null;
+      const [x, y] = project(meta.lon, meta.lat);
+      return { item: it, x, y, cat: metaFrom(categories, it.category) };
+    }).filter(Boolean);
+  }, [items, categories]);
+
+  // Regroupe les pins très proches (même ville) pour éviter qu'ils se superposent exactement
+  const spread = useMemo(() => {
+    const seen = {};
+    return points.map((p) => {
+      const key = `${Math.round(p.x)}-${Math.round(p.y)}`;
+      const n = seen[key] || 0;
+      seen[key] = n + 1;
+      const angle = n * 0.9;
+      const r = n === 0 ? 0 : 10 + n * 3;
+      return { ...p, x: p.x + Math.cos(angle) * r, y: p.y + Math.sin(angle) * r };
+    });
+  }, [points]);
+
+  const outlinePoints = FRANCE_OUTLINE.map(([lon, lat]) => project(lon, lat).join(",")).join(" ");
+  const active = activeIdx !== null ? spread[activeIdx] : null;
+
+  return (
+    <div style={{ background: "#fff", border: "2px solid #F0EADB", borderRadius: 22, padding: 14, position: "relative" }}>
+      <div style={{ position: "relative", width: "100%", aspectRatio: `${MAP_W} / ${MAP_H}`, overflow: "visible" }}>
+        <svg viewBox={`0 0 ${MAP_W} ${MAP_H}`} width="100%" height="100%" style={{ display: "block" }}>
+          <polygon points={outlinePoints} fill="#EAF4FB" stroke={COLORS.sky} strokeWidth={2.5} strokeLinejoin="round" />
+          {spread.map((p, i) => (
+            <g
+              key={i}
+              transform={`translate(${p.x},${p.y})`}
+              style={{ cursor: "pointer" }}
+              onClick={() => setActiveIdx(activeIdx === i ? null : i)}
+            >
+              <circle r={activeIdx === i ? 11 : 8.5} fill={p.cat.color} stroke="#fff" strokeWidth={2.5} />
+            </g>
+          ))}
+        </svg>
+
+        {active && (
+          <div
+            style={{
+              position: "absolute",
+              left: `${(active.x / MAP_W) * 100}%`,
+              top: `${(active.y / MAP_H) * 100}%`,
+              transform: "translate(-50%, -115%)",
+              background: "#fff", border: "2px solid #F0EADB", borderRadius: 16,
+              padding: 12, width: 210, boxShadow: "0 10px 24px rgba(43,37,96,0.16)", zIndex: 10,
+            }}
+          >
+            <button
+              onClick={() => setActiveIdx(null)}
+              style={{ position: "absolute", top: 6, right: 6, background: "transparent", border: "none", cursor: "pointer", padding: 2 }}
+            >
+              <X size={14} color="#B7AF98" />
+            </button>
+            <div style={{ fontFamily: "Nunito, sans-serif", fontWeight: 800, fontSize: 10.5, color: active.cat.color, textTransform: "uppercase", letterSpacing: 0.4, marginBottom: 3 }}>
+              {active.cat.label}
+            </div>
+            <div style={{ fontFamily: "Fredoka, sans-serif", fontWeight: 600, fontSize: 14, color: COLORS.ink, marginBottom: 5, lineHeight: 1.2 }}>
+              {active.item.title}
+            </div>
+            <div style={{ fontFamily: "Nunito, sans-serif", fontSize: 12, color: "#6B6485", marginBottom: 8 }}>
+              📍 {lieuAvecVille(active.item)}
+            </div>
+            <button
+              onClick={() => onOpen(active.item)}
+              style={{
+                width: "100%", fontFamily: "Nunito, sans-serif", fontWeight: 800, fontSize: 12,
+                background: COLORS.ink, color: "#fff", border: "none", borderRadius: 10,
+                padding: "7px 10px", cursor: "pointer",
+              }}
+            >
+              Voir la fiche
+            </button>
+          </div>
+        )}
+      </div>
+
+      {points.length === 0 && (
+        <div style={{ textAlign: "center", padding: "20px 0 4px", color: "#9A93AF", fontFamily: "Nunito, sans-serif", fontSize: 13.5 }}>
+          Aucune sortie géolocalisée pour ces filtres.
+        </div>
+      )}
+    </div>
+  );
+}
+
 function PillButton({ children, color = COLORS.sun, onClick, style, textColor }) {
   return (
     <button
@@ -663,9 +773,32 @@ function shade(hex, amt) {
 }
 
 // ---------- Screens ----------
+function ViewToggle({ view, onChange }) {
+  const opt = (id, Icon, label) => (
+    <button
+      onClick={() => onChange(id)}
+      style={{
+        display: "flex", alignItems: "center", gap: 6, border: "none", cursor: "pointer",
+        background: view === id ? COLORS.ink : "transparent",
+        color: view === id ? "#fff" : "#6B6485",
+        padding: "8px 14px", borderRadius: 12, fontFamily: "Nunito, sans-serif", fontWeight: 800, fontSize: 12.5,
+      }}
+    >
+      <Icon size={14} /> {label}
+    </button>
+  );
+  return (
+    <div style={{ display: "inline-flex", background: "#F0EADB", borderRadius: 14, padding: 4, marginBottom: 16 }}>
+      {opt("liste", List, "Liste")}
+      {opt("carte", Map, "Carte")}
+    </div>
+  );
+}
+
 function Explorer({ activities, favorites, onToggleFav, onOpen, location }) {
   const [query, setQuery] = useState("");
   const [cat, setCat] = useState("tous");
+  const [view, setView] = useState("liste");
 
   const filtered = useMemo(() => {
     return activities.filter((a) => {
@@ -704,7 +837,7 @@ function Explorer({ activities, favorites, onToggleFav, onOpen, location }) {
         />
       </div>
 
-      <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 6, marginBottom: 16 }}>
+      <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 6, marginBottom: 10 }}>
         <Chip active={cat === "tous"} onClick={() => setCat("tous")} color={COLORS.ink}>
           Toutes
         </Chip>
@@ -715,22 +848,28 @@ function Explorer({ activities, favorites, onToggleFav, onOpen, location }) {
         ))}
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(270px, 1fr))", gap: 14 }}>
-        {filtered.map((a) => (
-          <ActivityCard
-            key={a.id}
-            activity={a}
-            onOpen={onOpen}
-            favorite={favorites.includes(a.id)}
-            onToggleFav={onToggleFav}
-          />
-        ))}
-        {filtered.length === 0 && (
-          <div style={{ gridColumn: "1/-1", textAlign: "center", padding: "40px 0", color: "#9A93AF", fontFamily: "Nunito, sans-serif" }}>
-            Aucune sortie ne correspond. Essayez une autre recherche !
-          </div>
-        )}
-      </div>
+      <ViewToggle view={view} onChange={setView} />
+
+      {view === "carte" ? (
+        <MapView items={filtered} categories={CATEGORIES} onOpen={onOpen} />
+      ) : (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(270px, 1fr))", gap: 14 }}>
+          {filtered.map((a) => (
+            <ActivityCard
+              key={a.id}
+              activity={a}
+              onOpen={onOpen}
+              favorite={favorites.includes(a.id)}
+              onToggleFav={onToggleFav}
+            />
+          ))}
+          {filtered.length === 0 && (
+            <div style={{ gridColumn: "1/-1", textAlign: "center", padding: "40px 0", color: "#9A93AF", fontFamily: "Nunito, sans-serif" }}>
+              Aucune sortie ne correspond. Essayez une autre recherche !
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -1348,6 +1487,7 @@ function CommunityCard({ item, categories, onOpen, favorite, onToggleFav }) {
 function CommunityExplorer({ title, subtitle, categories, items, favorites, onToggleFav, onOpen, emptyText, location }) {
   const [query, setQuery] = useState("");
   const [cat, setCat] = useState("tous");
+  const [view, setView] = useState("liste");
 
   const filtered = useMemo(() => {
     return items.filter((a) => {
@@ -1382,24 +1522,30 @@ function CommunityExplorer({ title, subtitle, categories, items, favorites, onTo
         />
       </div>
 
-      <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 6, marginBottom: 16 }}>
+      <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 6, marginBottom: 10 }}>
         <Chip active={cat === "tous"} onClick={() => setCat("tous")} color={COLORS.ink}>Toutes</Chip>
         {categories.map((c) => (
           <Chip key={c.id} active={cat === c.id} onClick={() => setCat(c.id)} color={c.color}>{c.label}</Chip>
         ))}
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(270px, 1fr))", gap: 14 }}>
-        {filtered.map((item) => (
-          <CommunityCard key={item.id} item={item} categories={categories} onOpen={onOpen}
-            favorite={favorites.includes(item.id)} onToggleFav={onToggleFav} />
-        ))}
-        {filtered.length === 0 && (
-          <div style={{ gridColumn: "1/-1", textAlign: "center", padding: "40px 0", color: "#9A93AF", fontFamily: "Nunito, sans-serif" }}>
-            {emptyText}
-          </div>
-        )}
-      </div>
+      <ViewToggle view={view} onChange={setView} />
+
+      {view === "carte" ? (
+        <MapView items={filtered} categories={categories} onOpen={onOpen} />
+      ) : (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(270px, 1fr))", gap: 14 }}>
+          {filtered.map((item) => (
+            <CommunityCard key={item.id} item={item} categories={categories} onOpen={onOpen}
+              favorite={favorites.includes(item.id)} onToggleFav={onToggleFav} />
+          ))}
+          {filtered.length === 0 && (
+            <div style={{ gridColumn: "1/-1", textAlign: "center", padding: "40px 0", color: "#9A93AF", fontFamily: "Nunito, sans-serif" }}>
+              {emptyText}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
