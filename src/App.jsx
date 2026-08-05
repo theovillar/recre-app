@@ -138,7 +138,10 @@ function matchLocation(villeId, location) {
   if (!meta) return true;
   if (location.type === "departement") return meta.dept === location.code;
   if (location.type === "commune") {
-    return haversineKm(location.lat, location.lon, meta.lat, meta.lon) <= location.radius;
+    // "Ville exacte" (0 km) tolère un petit écart de géocodage (quelques centaines de mètres) :
+    // deux sources de coordonnées pour une même ville ne tombent presque jamais pile au même point.
+    const effectiveRadius = location.radius === 0 ? 1.5 : location.radius;
+    return haversineKm(location.lat, location.lon, meta.lat, meta.lon) <= effectiveRadius;
   }
   return true;
 }
