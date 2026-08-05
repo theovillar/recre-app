@@ -143,7 +143,7 @@ function matchLocation(villeId, location) {
 function locationLabel(location) {
   if (!location) return "Toute la France";
   if (location.type === "departement") return `${location.nom} (${location.code})`;
-  return `${location.nom} · ${location.radius} km`;
+  return `${location.nom} · ${location.radius === 0 ? "ville exacte" : location.radius + " km"}`;
 }
 
 
@@ -1135,7 +1135,7 @@ function LocationFilter({ location, onChange }) {
                   Rayon autour de {location.nom}
                 </div>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                  {[1, 5, 10, 25, 50, 100].map((km) => (
+                  {[0, 1, 5, 10, 25, 50, 100].map((km) => (
                     <button
                       key={km}
                       onClick={() => onChange({ ...location, radius: km })}
@@ -1147,7 +1147,7 @@ function LocationFilter({ location, onChange }) {
                         color: location.radius === km ? "#fff" : COLORS.ink,
                       }}
                     >
-                      {km} km
+                      {km === 0 ? "Ville exacte" : `${km} km`}
                     </button>
                   ))}
                 </div>
