@@ -1,9 +1,9 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import {
   Compass, PlusCircle, BookMarked, UserCircle2, Search, MapPin,
   CalendarDays, Users, X, ChevronRight, Sparkles, Heart, Check,
   Baby, Trees, Palette, Music4, Puzzle, Bike, Coffee, Dumbbell,
-  Landmark, Gamepad2, Film
+  Landmark, Gamepad2, Film, Clock, ShieldCheck, Lock
 } from "lucide-react";
 
 // ---------- Design tokens ----------
@@ -754,7 +754,7 @@ function MyOutings({ joined, activities }) {
   );
 }
 
-function Profile({ joinedCount }) {
+function Profile({ joinedCount, validated, onToggleDemo }) {
   return (
     <div style={{ maxWidth: 480, margin: "0 auto" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 22 }}>
@@ -770,6 +770,8 @@ function Profile({ joinedCount }) {
           <div style={{ fontFamily: "Nunito, sans-serif", fontSize: 13, color: "#6B6485" }}>{joinedCount} sortie(s) rejointe(s)</div>
         </div>
       </div>
+
+      <ValidationStatus validated={validated} onToggleDemo={onToggleDemo} />
 
       <SectionLabel>Mes enfants</SectionLabel>
       <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 22 }}>
@@ -808,6 +810,48 @@ function Profile({ joinedCount }) {
             {c.label}
           </span>
         ))}
+      </div>
+    </div>
+  );
+}
+
+function ValidationStatus({ validated, onToggleDemo }) {
+  return (
+    <div style={{
+      background: validated ? "#EAF8ED" : "#FFF4DD",
+      border: `2px solid ${validated ? COLORS.grass : COLORS.sun}`,
+      borderRadius: 20, padding: 18, marginBottom: 22,
+    }}>
+      <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
+        <div style={{
+          width: 38, height: 38, borderRadius: "50%", flexShrink: 0,
+          background: validated ? COLORS.grass : COLORS.sun,
+          display: "flex", alignItems: "center", justifyContent: "center",
+        }}>
+          {validated ? <ShieldCheck size={19} color="#fff" /> : <Clock size={19} color={COLORS.ink} />}
+        </div>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontFamily: "Fredoka, sans-serif", fontWeight: 600, fontSize: 15.5, color: COLORS.ink, marginBottom: 4 }}>
+            {validated ? "Identité validée par la mairie" : "Validation de la mairie en attente"}
+          </div>
+          <p style={{ fontFamily: "Nunito, sans-serif", fontSize: 13, color: "#5C5578", lineHeight: 1.5, margin: 0 }}>
+            {validated
+              ? "Vous avez accès aux sorties enfants : Explorer, Créer une sortie et Mes sorties."
+              : "Pour la sécurité des enfants, l'accès aux sorties enfants (Explorer, Créer, Mes sorties) n'est ouvert qu'aux parents dont l'identité a été vérifiée par la mairie de leur commune. Vous recevrez une notification dès que ce sera fait."}
+          </p>
+          {onToggleDemo && (
+            <button
+              onClick={onToggleDemo}
+              style={{
+                marginTop: 10, fontFamily: "Nunito, sans-serif", fontWeight: 800, fontSize: 12,
+                background: "transparent", border: `2px solid ${COLORS.ink}`, color: COLORS.ink,
+                borderRadius: 10, padding: "6px 12px", cursor: "pointer",
+              }}
+            >
+              {validated ? "Simuler : repasser en attente (démo)" : "Simuler : validation par la mairie (démo)"}
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -1134,7 +1178,8 @@ function CommunityDetailModal({ item, categories, onClose, joined, onJoin, joinL
 
 // ---------- Root ----------
 export default function RecreApp() {
-  const [tab, setTab] = useState("explorer");
+  const [parentValidated, setParentValidated] = useState(false);
+  const [tab, setTab] = useState("profil");
   const [activities, setActivities] = useState(INITIAL_ACTIVITIES);
   const [favorites, setFavorites] = useState([]);
   const [joined, setJoined] = useState([]);
@@ -1177,14 +1222,22 @@ export default function RecreApp() {
     setSelectedCommunity((s) => s && s.item.id === id ? { ...s, item: { ...s.item, inscrits: s.item.inscrits + 1 } } : s);
   };
 
-  const TABS = [
-    { id: "explorer", label: "Explorer", icon: Compass },
-    { id: "creer", label: "Créer", icon: PlusCircle },
-    { id: "mes-sorties", label: "Mes sorties", icon: BookMarked },
+  const TABS_ALL = [
+    { id: "explorer", label: "Explorer", icon: Compass, kidsOnly: true },
+    { id: "creer", label: "Créer", icon: PlusCircle, kidsOnly: true },
+    { id: "mes-sorties", label: "Mes sorties", icon: BookMarked, kidsOnly: true },
     { id: "adultes", label: "Adultes", icon: Coffee },
     { id: "ados", label: "Ados", icon: Gamepad2 },
     { id: "profil", label: "Profil", icon: UserCircle2 },
   ];
+  const TABS = TABS_ALL.filter((t) => !t.kidsOnly || parentValidated);
+
+  // Si le parent n'est plus validé (démo) alors qu'il est sur un onglet enfants, on le repositionne
+  useEffect(() => {
+    const stillVisible = TABS.some((t) => t.id === tab);
+    if (!stillVisible) setTab("profil");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [parentValidated]);
 
   return (
     <div style={{ background: COLORS.cloud, minHeight: "100vh", fontFamily: "Nunito, sans-serif" }}>
@@ -1234,11 +1287,11 @@ export default function RecreApp() {
       <div style={{
         maxWidth: 960, margin: "0 auto", padding: "0 20px 110px",
       }}>
-        {tab === "explorer" && (
+        {tab === "explorer" && parentValidated && (
           <Explorer activities={activities} favorites={favorites} onToggleFav={toggleFav} onOpen={setSelected} />
         )}
-        {tab === "creer" && <CreateActivity onCreate={createActivity} />}
-        {tab === "mes-sorties" && <MyOutings joined={joined} activities={activities} />}
+        {tab === "creer" && parentValidated && <CreateActivity onCreate={createActivity} />}
+        {tab === "mes-sorties" && parentValidated && <MyOutings joined={joined} activities={activities} />}
         {tab === "adultes" && (
           <CommunityExplorer
             title="Rencontres entre parents"
@@ -1263,7 +1316,13 @@ export default function RecreApp() {
             emptyText="Aucune rencontre ne correspond. Essayez une autre recherche !"
           />
         )}
-        {tab === "profil" && <Profile joinedCount={joined.length} />}
+        {tab === "profil" && (
+          <Profile
+            joinedCount={joined.length}
+            validated={parentValidated}
+            onToggleDemo={() => setParentValidated((v) => !v)}
+          />
+        )}
       </div>
 
       {/* Bottom tab bar (mobile) */}
