@@ -5,6 +5,9 @@ import {
   Baby, Trees, Palette, Music4, Puzzle, Bike, Coffee, Dumbbell,
   Landmark, Gamepad2, Film, Clock, ShieldCheck, Lock, ChevronDown, List, Map
 } from "lucide-react";
+import { MapContainer, TileLayer, Marker, Popup, Circle, CircleMarker, useMap } from "react-leaflet";
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
 
 // ---------- Design tokens ----------
 const COLORS = {
@@ -149,50 +152,12 @@ function locationLabel(location) {
 const villeName = (id) => (CITY_META[id] || {}).label || "";
 const lieuAvecVille = (item) => (villeName(item.ville) ? `${item.lieu} · ${villeName(item.ville)}` : item.lieu);
 
-// ---------- Carte (projection simplifiée, sans tuiles externes) ----------
-const MAP_BOUNDS = { lonMin: -5.2, lonMax: 9.6, latMin: 41.3, latMax: 51.1 };
-const MAP_W = 600, MAP_H = 580;
-function projectIn(bounds, lon, lat) {
-  const x = ((lon - bounds.lonMin) / (bounds.lonMax - bounds.lonMin)) * MAP_W;
-  const y = ((bounds.latMax - lat) / (bounds.latMax - bounds.latMin)) * MAP_H;
-  return [x, y];
-}
-const project = (lon, lat) => projectIn(MAP_BOUNDS, lon, lat);
-
-// Contour très simplifié de la France métropolitaine, à but illustratif
-// (pas de vrai tracé officiel disponible ici, cette forme est approximative)
-const FRANCE_OUTLINE = [
-  [2.37, 51.03], [3.06, 50.63], [7.75, 48.58], [7.59, 47.59], [6.15, 46.20],
-  [7.26, 43.71], [7.50, 43.78], [5.37, 43.30], [2.90, 42.68], [1.45, 42.45],
-  [-1.56, 43.48], [-1.20, 44.85], [-2.20, 47.25], [-4.49, 48.39], [-1.62, 49.65],
-  [0.11, 49.49], [2.37, 51.03],
-];
-
+// ---------- Carte ----------
 // Un point représentatif par département (première ville connue de ce département),
-// utilisé pour afficher le numéro du département sur la carte — pas un vrai tracé de frontière.
+// utilisé pour centrer la carte sur un département recherché.
 const DEPT_LABEL_POINTS = {};
 LOCAL_PLACES.forEach((p) => { if (p.dept && !DEPT_LABEL_POINTS[p.dept]) DEPT_LABEL_POINTS[p.dept] = p; });
 
-// Calcule la zone à afficher (bounds) en fonction de la recherche de localisation en cours
-function computeMapBounds(location) {
-  if (!location) return MAP_BOUNDS;
-  if (location.type === "departement") {
-    const p = DEPT_LABEL_POINTS[location.code];
-    if (!p) return MAP_BOUNDS;
-    const spanLon = 1.5, spanLat = 1.1;
-    return { lonMin: p.lon - spanLon, lonMax: p.lon + spanLon, latMin: p.lat - spanLat, latMax: p.lat + spanLat };
-  }
-  if (location.type === "commune") {
-    const kmSpan = Math.max(location.radius, 4) * 1.9;
-    const latSpan = kmSpan / 111;
-    const lonSpan = kmSpan / (111 * Math.cos((location.lat * Math.PI) / 180));
-    return {
-      lonMin: location.lon - lonSpan, lonMax: location.lon + lonSpan,
-      latMin: location.lat - latSpan, latMax: location.lat + latSpan,
-    };
-  }
-  return MAP_BOUNDS;
-}
 
 
 
@@ -681,162 +646,118 @@ function Row({ icon, text }) {
   );
 }
 
+function dotIcon(color, size) {
+  size = size || 22;
+  return L.divIcon({
+    className: "",
+    html: `<div style="width:${size}px;height:${size}px;border-radius:50%;background:${color};border:3px solid #fff;box-shadow:0 2px 6px rgba(43,37,96,0.35);"></div>`,
+    iconSize: [size, size],
+    iconAnchor: [size / 2, size / 2],
+    popupAnchor: [0, -size / 2],
+  });
+}
+
+// Repositionne/zoome la carte Leaflet quand la recherche de localisation change
+function RecenterMap({ location }) {
+  const map = useMap();
+  useEffect(() => {
+    if (!location) {
+      map.setView([46.6, 2.4], 6);
+    } else if (location.type === "departement") {
+      const p = DEPT_LABEL_POINTS[location.code];
+      if (p) map.setView([p.lat, p.lon], 9);
+    } else if (location.type === "commune") {
+      const zoom = location.radius === 0 ? 13
+        : location.radius <= 5 ? 12
+        : location.radius <= 10 ? 11
+        : location.radius <= 25 ? 10
+        : location.radius <= 50 ? 9
+        : 8;
+      map.setView([location.lat, location.lon], zoom);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location]);
+  return null;
+}
+
 function MapView({ items, categories, onOpen, location }) {
-  const [activeIdx, setActiveIdx] = useState(null);
-
-  const bounds = useMemo(() => computeMapBounds(location), [location]);
-  const zoomed = (bounds.lonMax - bounds.lonMin) < 5; // zone assez petite pour afficher les libellés
-
   const points = useMemo(() => {
     return items.map((it) => {
       const meta = CITY_META[it.ville];
       if (!meta) return null;
-      const [x, y] = projectIn(bounds, meta.lon, meta.lat);
-      return { item: it, x, y, cat: metaFrom(categories, it.category) };
+      return { item: it, meta, cat: metaFrom(categories, it.category) };
     }).filter(Boolean);
-  }, [items, categories, bounds]);
-
-  // Regroupe les pins très proches (même ville) pour éviter qu'ils se superposent exactement
-  const spread = useMemo(() => {
-    const seen = {};
-    return points.map((p) => {
-      const key = `${Math.round(p.x)}-${Math.round(p.y)}`;
-      const n = seen[key] || 0;
-      seen[key] = n + 1;
-      const angle = n * 0.9;
-      const r = n === 0 ? 0 : 10 + n * 3;
-      return { ...p, x: p.x + Math.cos(angle) * r, y: p.y + Math.sin(angle) * r };
-    });
-  }, [points]);
-
-  // Villes de repère (avec ou sans sortie), utiles pour se situer sur la carte
-  const cityDots = useMemo(() => {
-    return LOCAL_PLACES.map((c) => {
-      const [x, y] = projectIn(bounds, c.lon, c.lat);
-      if (x < -20 || x > MAP_W + 20 || y < -20 || y > MAP_H + 20) return null;
-      return { ...c, x, y };
-    }).filter(Boolean);
-  }, [bounds]);
-
-  // Numéros de département visibles dans la zone affichée
-  const deptLabels = useMemo(() => {
-    return Object.entries(DEPT_LABEL_POINTS).map(([code, p]) => {
-      const [x, y] = projectIn(bounds, p.lon, p.lat);
-      if (x < 10 || x > MAP_W - 10 || y < 10 || y > MAP_H - 10) return null;
-      return { code, x, y };
-    }).filter(Boolean);
-  }, [bounds]);
-
-  const outlinePoints = FRANCE_OUTLINE.map(([lon, lat]) => projectIn(bounds, lon, lat).join(",")).join(" ");
-  const active = activeIdx !== null ? spread[activeIdx] : null;
-
-  // Marqueur + rayon de la recherche en cours (le cas échéant)
-  let searchMarker = null;
-  if (location?.type === "commune") {
-    const [sx, sy] = projectIn(bounds, location.lon, location.lat);
-    let rx = 0, ry = 0;
-    if (location.radius > 0) {
-      const latSpan = location.radius / 111;
-      const lonSpan = location.radius / (111 * Math.cos((location.lat * Math.PI) / 180));
-      const pxPerDegLon = MAP_W / (bounds.lonMax - bounds.lonMin);
-      const pxPerDegLat = MAP_H / (bounds.latMax - bounds.latMin);
-      rx = lonSpan * pxPerDegLon;
-      ry = latSpan * pxPerDegLat;
-    }
-    searchMarker = { sx, sy, rx, ry };
-  }
+  }, [items, categories]);
 
   return (
-    <div style={{ background: "#fff", border: "2px solid #F0EADB", borderRadius: 22, padding: 14, position: "relative" }}>
-      <div style={{ position: "relative", width: "100%", aspectRatio: `${MAP_W} / ${MAP_H}`, overflow: "visible" }}>
-        <svg viewBox={`0 0 ${MAP_W} ${MAP_H}`} width="100%" height="100%" style={{ display: "block" }}>
-          <polygon points={outlinePoints} fill="#EAF4FB" stroke={COLORS.sky} strokeWidth={2.5} strokeLinejoin="round" />
+    <div style={{ background: "#fff", border: "2px solid #F0EADB", borderRadius: 22, padding: 10, position: "relative" }}>
+      <div style={{ width: "100%", height: 440, borderRadius: 16, overflow: "hidden" }}>
+        <MapContainer center={[46.6, 2.4]} zoom={6} scrollWheelZoom style={{ width: "100%", height: "100%" }}>
+          <TileLayer
+            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          />
+          <RecenterMap location={location} />
 
-          {/* Villes de repère */}
-          {cityDots.map((c, i) => (
-            <g key={`c-${i}`} transform={`translate(${c.x},${c.y})`}>
-              <circle r={2.6} fill="#B7AF98" />
-              {zoomed && (
-                <text x={6} y={4} fontFamily="Nunito, sans-serif" fontSize={11} fontWeight={700} fill="#8A8399">
-                  {c.nom}
-                </text>
-              )}
-            </g>
-          ))}
-
-          {/* Numéros de département */}
-          {deptLabels.map((d) => (
-            <text
-              key={`d-${d.code}`} x={d.x} y={d.y - 12} textAnchor="middle"
-              fontFamily="Fredoka, sans-serif" fontSize={zoomed ? 15 : 11} fontWeight={600}
-              fill={COLORS.grape} opacity={0.55}
+          {/* Villes de repère, pour se situer même sans sortie à cet endroit */}
+          {LOCAL_PLACES.map((c, i) => (
+            <CircleMarker
+              key={`c-${i}`}
+              center={[c.lat, c.lon]}
+              radius={3}
+              pathOptions={{ color: "#fff", weight: 1.5, fillColor: "#B7AF98", fillOpacity: 1 }}
             >
-              {d.code}
-            </text>
+              <Popup>
+                <span style={{ fontFamily: "Nunito, sans-serif", fontWeight: 700 }}>{c.nom}{c.dept ? ` (${c.dept})` : ""}</span>
+              </Popup>
+            </CircleMarker>
           ))}
 
-          {/* Rayon de recherche */}
-          {searchMarker && searchMarker.rx > 0 && (
-            <ellipse cx={searchMarker.sx} cy={searchMarker.sy} rx={searchMarker.rx} ry={searchMarker.ry}
-              fill={COLORS.coral} fillOpacity={0.1} stroke={COLORS.coral} strokeWidth={1.5} strokeDasharray="5 4" />
+          {/* Rayon + centre de la recherche en cours */}
+          {location?.type === "commune" && location.radius > 0 && (
+            <Circle
+              center={[location.lat, location.lon]}
+              radius={location.radius * 1000}
+              pathOptions={{ color: COLORS.coral, fillColor: COLORS.coral, fillOpacity: 0.08, dashArray: "6 5", weight: 2 }}
+            />
           )}
-          {searchMarker && (
-            <g transform={`translate(${searchMarker.sx},${searchMarker.sy})`}>
-              <circle r={5} fill={COLORS.coral} stroke="#fff" strokeWidth={2} />
-            </g>
+          {location?.type === "commune" && (
+            <CircleMarker
+              center={[location.lat, location.lon]}
+              radius={7}
+              pathOptions={{ color: "#fff", weight: 2.5, fillColor: COLORS.coral, fillOpacity: 1 }}
+            />
           )}
 
           {/* Sorties */}
-          {spread.map((p, i) => (
-            <g
-              key={i}
-              transform={`translate(${p.x},${p.y})`}
-              style={{ cursor: "pointer" }}
-              onClick={() => setActiveIdx(activeIdx === i ? null : i)}
-            >
-              <circle r={activeIdx === i ? 11 : 8.5} fill={p.cat.color} stroke="#fff" strokeWidth={2.5} />
-            </g>
+          {points.map((p, i) => (
+            <Marker key={i} position={[p.meta.lat, p.meta.lon]} icon={dotIcon(p.cat.color)}>
+              <Popup>
+                <div style={{ fontFamily: "Nunito, sans-serif", minWidth: 170 }}>
+                  <div style={{ fontWeight: 800, fontSize: 10.5, color: p.cat.color, textTransform: "uppercase", letterSpacing: 0.4, marginBottom: 3 }}>
+                    {p.cat.label}
+                  </div>
+                  <div style={{ fontFamily: "Fredoka, sans-serif", fontWeight: 600, fontSize: 14, color: COLORS.ink, marginBottom: 4, lineHeight: 1.2 }}>
+                    {p.item.title}
+                  </div>
+                  <div style={{ fontSize: 12, color: "#6B6485", marginBottom: 8 }}>
+                    📍 {lieuAvecVille(p.item)}
+                  </div>
+                  <button
+                    onClick={() => onOpen(p.item)}
+                    style={{
+                      width: "100%", fontFamily: "Nunito, sans-serif", fontWeight: 800, fontSize: 12,
+                      background: COLORS.ink, color: "#fff", border: "none", borderRadius: 8,
+                      padding: "7px 8px", cursor: "pointer",
+                    }}
+                  >
+                    Voir la fiche
+                  </button>
+                </div>
+              </Popup>
+            </Marker>
           ))}
-        </svg>
-
-        {active && (
-          <div
-            style={{
-              position: "absolute",
-              left: `${(active.x / MAP_W) * 100}%`,
-              top: `${(active.y / MAP_H) * 100}%`,
-              transform: "translate(-50%, -115%)",
-              background: "#fff", border: "2px solid #F0EADB", borderRadius: 16,
-              padding: 12, width: 210, boxShadow: "0 10px 24px rgba(43,37,96,0.16)", zIndex: 10,
-            }}
-          >
-            <button
-              onClick={() => setActiveIdx(null)}
-              style={{ position: "absolute", top: 6, right: 6, background: "transparent", border: "none", cursor: "pointer", padding: 2 }}
-            >
-              <X size={14} color="#B7AF98" />
-            </button>
-            <div style={{ fontFamily: "Nunito, sans-serif", fontWeight: 800, fontSize: 10.5, color: active.cat.color, textTransform: "uppercase", letterSpacing: 0.4, marginBottom: 3 }}>
-              {active.cat.label}
-            </div>
-            <div style={{ fontFamily: "Fredoka, sans-serif", fontWeight: 600, fontSize: 14, color: COLORS.ink, marginBottom: 5, lineHeight: 1.2 }}>
-              {active.item.title}
-            </div>
-            <div style={{ fontFamily: "Nunito, sans-serif", fontSize: 12, color: "#6B6485", marginBottom: 8 }}>
-              📍 {lieuAvecVille(active.item)}
-            </div>
-            <button
-              onClick={() => onOpen(active.item)}
-              style={{
-                width: "100%", fontFamily: "Nunito, sans-serif", fontWeight: 800, fontSize: 12,
-                background: COLORS.ink, color: "#fff", border: "none", borderRadius: 10,
-                padding: "7px 10px", cursor: "pointer",
-              }}
-            >
-              Voir la fiche
-            </button>
-          </div>
-        )}
+        </MapContainer>
       </div>
 
       {location && (
@@ -846,7 +767,7 @@ function MapView({ items, categories, onOpen, location }) {
       )}
 
       {points.length === 0 && (
-        <div style={{ textAlign: "center", padding: "20px 0 4px", color: "#9A93AF", fontFamily: "Nunito, sans-serif", fontSize: 13.5 }}>
+        <div style={{ textAlign: "center", padding: "10px 0 4px", color: "#9A93AF", fontFamily: "Nunito, sans-serif", fontSize: 13.5 }}>
           Aucune sortie géolocalisée pour ces filtres.
         </div>
       )}
