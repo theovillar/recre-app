@@ -48,6 +48,13 @@ const CITY_META = {
   paris: { label: "Paris", lat: 48.8566, lon: 2.3522, dept: "75" },
 };
 
+// Index nom normalisé -> coordonnées exactes utilisées par les sorties de démo.
+// Permet de faire coïncider parfaitement une ville choisie dans la recherche avec
+// les sorties qui lui sont rattachées, même si une source externe (API, saisie)
+// renvoie des coordonnées légèrement différentes pour le même endroit.
+const KNOWN_BY_NAME = {};
+Object.entries(CITY_META).forEach(([id, m]) => { KNOWN_BY_NAME[normalize(m.label)] = { id, ...m }; });
+
 // Communes proposées à la recherche (au-delà des villes ayant déjà des sorties de démo),
 // pour représenter une couverture nationale : agglomération grenobloise + grandes villes de France.
 const LOCAL_PLACES = [
@@ -149,7 +156,7 @@ function matchLocation(villeId, location) {
 function locationLabel(location) {
   if (!location) return "Toute la France";
   if (location.type === "departement") return `${location.nom} (${location.code})`;
-  return `${location.nom} · ${location.radius === 0 ? "ville exacte" : location.radius + " km"}`;
+  return `${location.nom} · ${location.radius} km`;
 }
 
 const villeName = (id) => (CITY_META[id] || {}).label || "";
@@ -1236,7 +1243,11 @@ function LocationFilter({ location, onChange }) {
   }, [query]);
 
   const pickCommune = (p) => {
-    onChange({ type: "commune", nom: p.nom, lat: p.lat, lon: p.lon, dept: p.dept, radius: 20 });
+    const known = KNOWN_BY_NAME[normalize(p.nom)];
+    const lat = known ? known.lat : p.lat;
+    const lon = known ? known.lon : p.lon;
+    const dept = known ? known.dept : p.dept;
+    onChange({ type: "commune", nom: p.nom, lat, lon, dept, radius: 0 });
     setQuery("");
   };
   const pickDept = (d) => {
@@ -1322,7 +1333,7 @@ function LocationFilter({ location, onChange }) {
                         color: location.radius === km ? "#fff" : COLORS.ink,
                       }}
                     >
-                      {km === 0 ? "Ville exacte" : `${km} km`}
+                      {km} km
                     </button>
                   ))}
                 </div>
