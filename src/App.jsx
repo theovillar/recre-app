@@ -32,15 +32,120 @@ const CATEGORIES = [
 
 const catMeta = (id) => CATEGORIES.find((c) => c.id === id) || CATEGORIES[0];
 
-const CITIES = [
-  { id: "lyon", label: "Lyon (69)" },
-  { id: "grenoble", label: "Grenoble (38)" },
-  { id: "chambery", label: "Chambéry (73)" },
-  { id: "annecy", label: "Annecy (74)" },
-  { id: "valence", label: "Valence (26)" },
-  { id: "paris", label: "Paris (75)" },
+// ---------- Localisation (villes, départements, distances) ----------
+// Coordonnées des villes utilisées par les sorties de démo (id "ville" -> position + département)
+const CITY_META = {
+  grenoble: { label: "Grenoble", lat: 45.1885, lon: 5.7245, dept: "38" },
+  varces: { label: "Varces-Allières-et-Risset", lat: 45.1024, lon: 5.6698, dept: "38" },
+  vif: { label: "Vif", lat: 45.0733, lon: 5.6754, dept: "38" },
+  lyon: { label: "Lyon", lat: 45.7640, lon: 4.8357, dept: "69" },
+  chambery: { label: "Chambéry", lat: 45.5646, lon: 5.9178, dept: "73" },
+  annecy: { label: "Annecy", lat: 45.8992, lon: 6.1294, dept: "74" },
+  valence: { label: "Valence", lat: 44.9334, lon: 4.8924, dept: "26" },
+  paris: { label: "Paris", lat: 48.8566, lon: 2.3522, dept: "75" },
+};
+
+// Communes proposées à la recherche (au-delà des villes ayant déjà des sorties de démo),
+// pour représenter une couverture nationale : agglomération grenobloise + grandes villes de France.
+const LOCAL_PLACES = [
+  ...Object.entries(CITY_META).map(([id, c]) => ({ nom: c.label, lat: c.lat, lon: c.lon, dept: c.dept })),
+  { nom: "Vizille", lat: 45.0796, lon: 5.7738, dept: "38" },
+  { nom: "Claix", lat: 45.1333, lon: 5.6499, dept: "38" },
+  { nom: "Seyssins", lat: 45.1590, lon: 5.6767, dept: "38" },
+  { nom: "Seyssinet-Pariset", lat: 45.1747, lon: 5.6889, dept: "38" },
+  { nom: "Fontaine", lat: 45.1912, lon: 5.6883, dept: "38" },
+  { nom: "Échirolles", lat: 45.1500, lon: 5.7167, dept: "38" },
+  { nom: "Saint-Martin-d'Hères", lat: 45.1789, lon: 5.7644, dept: "38" },
+  { nom: "Meylan", lat: 45.2075, lon: 5.7736, dept: "38" },
+  { nom: "Eybens", lat: 45.1553, lon: 5.7413, dept: "38" },
+  { nom: "Pont-de-Claix", lat: 45.1394, lon: 5.6928, dept: "38" },
+  { nom: "Villeurbanne", lat: 45.7667, lon: 4.8794, dept: "69" },
+  { nom: "Marseille", lat: 43.2965, lon: 5.3698, dept: "13" },
+  { nom: "Aix-en-Provence", lat: 43.5297, lon: 5.4474, dept: "13" },
+  { nom: "Toulouse", lat: 43.6047, lon: 1.4442, dept: "31" },
+  { nom: "Nice", lat: 43.7102, lon: 7.2620, dept: "06" },
+  { nom: "Nantes", lat: 47.2184, lon: -1.5536, dept: "44" },
+  { nom: "Strasbourg", lat: 48.5734, lon: 7.7521, dept: "67" },
+  { nom: "Montpellier", lat: 43.6108, lon: 3.8767, dept: "34" },
+  { nom: "Bordeaux", lat: 44.8378, lon: -0.5792, dept: "33" },
+  { nom: "Lille", lat: 50.6292, lon: 3.0573, dept: "59" },
+  { nom: "Rennes", lat: 48.1173, lon: -1.6778, dept: "35" },
+  { nom: "Reims", lat: 49.2583, lon: 4.0317, dept: "51" },
+  { nom: "Toulon", lat: 43.1242, lon: 5.9280, dept: "83" },
+  { nom: "Saint-Étienne", lat: 45.4397, lon: 4.3872, dept: "42" },
+  { nom: "Dijon", lat: 47.3220, lon: 5.0415, dept: "21" },
+  { nom: "Angers", lat: 47.4784, lon: -0.5632, dept: "49" },
+  { nom: "Nîmes", lat: 43.8367, lon: 4.3601, dept: "30" },
+  { nom: "Clermont-Ferrand", lat: 45.7772, lon: 3.0870, dept: "63" },
+  { nom: "Le Mans", lat: 48.0061, lon: 0.1996, dept: "72" },
+  { nom: "Brest", lat: 48.3904, lon: -4.4861, dept: "29" },
+  { nom: "Tours", lat: 47.3941, lon: 0.6848, dept: "37" },
+  { nom: "Limoges", lat: 45.8336, lon: 1.2611, dept: "87" },
+  { nom: "Amiens", lat: 49.8941, lon: 2.2958, dept: "80" },
+  { nom: "Metz", lat: 49.1193, lon: 6.1757, dept: "57" },
+  { nom: "Besançon", lat: 47.2378, lon: 6.0241, dept: "25" },
+  { nom: "Orléans", lat: 47.9029, lon: 1.9093, dept: "45" },
+  { nom: "Mulhouse", lat: 47.7508, lon: 7.3359, dept: "68" },
+  { nom: "Rouen", lat: 49.4431, lon: 1.0993, dept: "76" },
+  { nom: "Caen", lat: 49.1829, lon: -0.3707, dept: "14" },
+  { nom: "Nancy", lat: 48.6921, lon: 6.1844, dept: "54" },
+  { nom: "Perpignan", lat: 42.6887, lon: 2.8948, dept: "66" },
 ];
-const cityLabel = (id) => (CITIES.find((c) => c.id === id) || {}).label || "Toutes les villes";
+
+// Liste complète des départements français, pour la recherche par département
+const FR_DEPARTEMENTS = [
+  ["01","Ain"],["02","Aisne"],["03","Allier"],["04","Alpes-de-Haute-Provence"],["05","Hautes-Alpes"],
+  ["06","Alpes-Maritimes"],["07","Ardèche"],["08","Ardennes"],["09","Ariège"],["10","Aube"],
+  ["11","Aude"],["12","Aveyron"],["13","Bouches-du-Rhône"],["14","Calvados"],["15","Cantal"],
+  ["16","Charente"],["17","Charente-Maritime"],["18","Cher"],["19","Corrèze"],["2A","Corse-du-Sud"],
+  ["2B","Haute-Corse"],["21","Côte-d'Or"],["22","Côtes-d'Armor"],["23","Creuse"],["24","Dordogne"],
+  ["25","Doubs"],["26","Drôme"],["27","Eure"],["28","Eure-et-Loir"],["29","Finistère"],
+  ["30","Gard"],["31","Haute-Garonne"],["32","Gers"],["33","Gironde"],["34","Hérault"],
+  ["35","Ille-et-Vilaine"],["36","Indre"],["37","Indre-et-Loire"],["38","Isère"],["39","Jura"],
+  ["40","Landes"],["41","Loir-et-Cher"],["42","Loire"],["43","Haute-Loire"],["44","Loire-Atlantique"],
+  ["45","Loiret"],["46","Lot"],["47","Lot-et-Garonne"],["48","Lozère"],["49","Maine-et-Loire"],
+  ["50","Manche"],["51","Marne"],["52","Haute-Marne"],["53","Mayenne"],["54","Meurthe-et-Moselle"],
+  ["55","Meuse"],["56","Morbihan"],["57","Moselle"],["58","Nièvre"],["59","Nord"],
+  ["60","Oise"],["61","Orne"],["62","Pas-de-Calais"],["63","Puy-de-Dôme"],["64","Pyrénées-Atlantiques"],
+  ["65","Hautes-Pyrénées"],["66","Pyrénées-Orientales"],["67","Bas-Rhin"],["68","Haut-Rhin"],["69","Rhône"],
+  ["70","Haute-Saône"],["71","Saône-et-Loire"],["72","Sarthe"],["73","Savoie"],["74","Haute-Savoie"],
+  ["75","Paris"],["76","Seine-Maritime"],["77","Seine-et-Marne"],["78","Yvelines"],["79","Deux-Sèvres"],
+  ["80","Somme"],["81","Tarn"],["82","Tarn-et-Garonne"],["83","Var"],["84","Vaucluse"],
+  ["85","Vendée"],["86","Vienne"],["87","Haute-Vienne"],["88","Vosges"],["89","Yonne"],
+  ["90","Territoire de Belfort"],["91","Essonne"],["92","Hauts-de-Seine"],["93","Seine-Saint-Denis"],
+  ["94","Val-de-Marne"],["95","Val-d'Oise"],["971","Guadeloupe"],["972","Martinique"],
+  ["973","Guyane"],["974","La Réunion"],["976","Mayotte"],
+].map(([code, nom]) => ({ code, nom }));
+
+function haversineKm(lat1, lon1, lat2, lon2) {
+  const R = 6371;
+  const toRad = (v) => (v * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a = Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+// location: null (toute la France) | { type: "commune", nom, lat, lon, dept, radius }
+//         | { type: "departement", code, nom }
+function matchLocation(villeId, location) {
+  if (!location) return true;
+  const meta = CITY_META[villeId];
+  if (!meta) return true;
+  if (location.type === "departement") return meta.dept === location.code;
+  if (location.type === "commune") {
+    return haversineKm(location.lat, location.lon, meta.lat, meta.lon) <= location.radius;
+  }
+  return true;
+}
+
+function locationLabel(location) {
+  if (!location) return "Toute la France";
+  if (location.type === "departement") return `${location.nom} (${location.code})`;
+  return `${location.nom} · ${location.radius} km`;
+}
+
 
 const ADULT_CATEGORIES = [
   { id: "cafe", label: "Café / Brunch", icon: Coffee, color: COLORS.sun },
@@ -83,7 +188,7 @@ const INITIAL_ACTIVITIES = [
     id: 2,
     title: "Atelier peinture à doigts",
     category: "creatif",
-    ville: "lyon",
+    ville: "varces",
     lieu: "Chez Camille (jardin)",
     date: "Dim. 10 août · 14h30",
     age: "2-5 ans",
@@ -247,7 +352,7 @@ const TEEN_MEETUPS = [
     id: 202,
     title: "City stade basket entre ados",
     category: "sport",
-    ville: "grenoble",
+    ville: "vif",
     lieu: "City stade du parc",
     date: "Sam. 16 août · 15h00",
     info: "13-17 ans · coaché par un éducateur sportif",
@@ -555,19 +660,19 @@ function shade(hex, amt) {
 }
 
 // ---------- Screens ----------
-function Explorer({ activities, favorites, onToggleFav, onOpen, city }) {
+function Explorer({ activities, favorites, onToggleFav, onOpen, location }) {
   const [query, setQuery] = useState("");
   const [cat, setCat] = useState("tous");
 
   const filtered = useMemo(() => {
     return activities.filter((a) => {
       const matchCat = cat === "tous" || a.category === cat;
-      const matchCity = city === "tous" || a.ville === city;
+      const matchLoc = matchLocation(a.ville, location);
       const matchQuery = a.title.toLowerCase().includes(query.toLowerCase()) ||
         a.lieu.toLowerCase().includes(query.toLowerCase());
-      return matchCat && matchCity && matchQuery;
+      return matchCat && matchLoc && matchQuery;
     });
-  }, [activities, query, cat, city]);
+  }, [activities, query, cat, location]);
 
   return (
     <div>
@@ -905,8 +1010,66 @@ function Legend({ color, label }) {
   );
 }
 
-function CityPicker({ city, onChange }) {
+function normalize(s) {
+  return (s || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+}
+
+function LocationFilter({ location, onChange }) {
   const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const [remoteResults, setRemoteResults] = useState([]);
+
+  // Tentative de recherche nationale en direct (API officielle "geo.api.gouv.fr").
+  // Si le réseau n'est pas disponible ici, la recherche locale ci-dessous prend le relais.
+  useEffect(() => {
+    if (query.trim().length < 2) { setRemoteResults([]); return; }
+    let cancelled = false;
+    const timer = setTimeout(() => {
+      if (typeof fetch === "undefined") return;
+      fetch(`https://geo.api.gouv.fr/communes?nom=${encodeURIComponent(query)}&fields=nom,code,codeDepartement,centre&boost=population&limit=6`)
+        .then((r) => (r.ok ? r.json() : []))
+        .then((data) => {
+          if (cancelled || !Array.isArray(data)) return;
+          setRemoteResults(data.map((d) => ({
+            nom: d.nom, dept: d.codeDepartement,
+            lat: d.centre?.coordinates?.[1], lon: d.centre?.coordinates?.[0],
+          })).filter((d) => d.lat && d.lon));
+        })
+        .catch(() => { if (!cancelled) setRemoteResults([]); });
+    }, 300);
+    return () => { cancelled = true; clearTimeout(timer); };
+  }, [query]);
+
+  const communeSuggestions = useMemo(() => {
+    const q = normalize(query);
+    if (q.length < 1) return [];
+    const local = LOCAL_PLACES.filter((p) => normalize(p.nom).includes(q));
+    const merged = [...remoteResults, ...local];
+    const seen = new Set();
+    return merged.filter((p) => {
+      const key = normalize(p.nom);
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    }).slice(0, 7);
+  }, [query, remoteResults]);
+
+  const deptSuggestions = useMemo(() => {
+    const q = normalize(query);
+    if (q.length < 1) return [];
+    return FR_DEPARTEMENTS.filter((d) => normalize(d.nom).includes(q) || d.code.includes(q)).slice(0, 4);
+  }, [query]);
+
+  const pickCommune = (p) => {
+    onChange({ type: "commune", nom: p.nom, lat: p.lat, lon: p.lon, dept: p.dept, radius: 20 });
+    setQuery("");
+  };
+  const pickDept = (d) => {
+    onChange({ type: "departement", code: d.code, nom: d.nom });
+    setQuery("");
+    setOpen(false);
+  };
+
   return (
     <div style={{ position: "relative" }}>
       <button
@@ -919,7 +1082,7 @@ function CityPicker({ city, onChange }) {
       >
         <MapPin size={15} color={COLORS.coral} />
         <span style={{ fontWeight: 800, fontSize: 12.5, color: COLORS.ink, whiteSpace: "nowrap" }}>
-          {city === "tous" ? "Toutes les villes" : cityLabel(city)}
+          {locationLabel(location)}
         </span>
         <ChevronDown size={14} color="#B7AF98" />
       </button>
@@ -929,13 +1092,67 @@ function CityPicker({ city, onChange }) {
           <div onClick={() => setOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 55 }} />
           <div style={{
             position: "absolute", top: "calc(100% + 6px)", right: 0, background: "#fff",
-            border: "2px solid #F0EADB", borderRadius: 16, padding: 8, minWidth: 190,
+            border: "2px solid #F0EADB", borderRadius: 16, padding: 12, width: 280,
             boxShadow: "0 12px 28px rgba(43,37,96,0.14)", zIndex: 56,
           }}>
-            <CityOption label="Toutes les villes" active={city === "tous"} onClick={() => { onChange("tous"); setOpen(false); }} />
-            {CITIES.map((c) => (
-              <CityOption key={c.id} label={c.label} active={city === c.id} onClick={() => { onChange(c.id); setOpen(false); }} />
-            ))}
+            <input
+              autoFocus
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Ville, code postal, département…"
+              style={{
+                width: "100%", border: "2px solid #F0EADB", borderRadius: 12, padding: "9px 12px",
+                fontFamily: "Nunito, sans-serif", fontSize: 13.5, outline: "none", boxSizing: "border-box",
+                marginBottom: 8,
+              }}
+            />
+
+            <CityOption label="Toute la France" active={!location} onClick={() => { onChange(null); setQuery(""); setOpen(false); }} />
+
+            {query.trim().length > 0 && (
+              <div style={{ maxHeight: 220, overflowY: "auto" }}>
+                {deptSuggestions.map((d) => (
+                  <CityOption key={d.code} label={`${d.nom} (${d.code})`} sub="Département"
+                    active={location?.type === "departement" && location.code === d.code}
+                    onClick={() => pickDept(d)} />
+                ))}
+                {communeSuggestions.map((p, i) => (
+                  <CityOption key={p.nom + i} label={p.nom} sub={p.dept ? `Ville · dept. ${p.dept}` : "Ville"}
+                    active={location?.type === "commune" && location.nom === p.nom}
+                    onClick={() => pickCommune(p)} />
+                ))}
+                {deptSuggestions.length === 0 && communeSuggestions.length === 0 && (
+                  <div style={{ fontFamily: "Nunito, sans-serif", fontSize: 12.5, color: "#9A93AF", padding: "8px 6px" }}>
+                    Aucun résultat pour "{query}"
+                  </div>
+                )}
+              </div>
+            )}
+
+            {location?.type === "commune" && (
+              <div style={{ marginTop: 10, paddingTop: 10, borderTop: "1px solid #F0EADB" }}>
+                <div style={{ fontFamily: "Nunito, sans-serif", fontWeight: 800, fontSize: 11, color: "#9A93AF", marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.4 }}>
+                  Rayon autour de {location.nom}
+                </div>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                  {[1, 5, 10, 25, 50, 100].map((km) => (
+                    <button
+                      key={km}
+                      onClick={() => onChange({ ...location, radius: km })}
+                      style={{
+                        fontFamily: "Nunito, sans-serif", fontWeight: 800, fontSize: 11.5,
+                        padding: "5px 10px", borderRadius: 999, cursor: "pointer",
+                        border: `2px solid ${location.radius === km ? COLORS.coral : "#F0EADB"}`,
+                        background: location.radius === km ? COLORS.coral : "#fff",
+                        color: location.radius === km ? "#fff" : COLORS.ink,
+                      }}
+                    >
+                      {km} km
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </>
       )}
@@ -943,18 +1160,20 @@ function CityPicker({ city, onChange }) {
   );
 }
 
-function CityOption({ label, active, onClick }) {
+function CityOption({ label, sub, active, onClick }) {
   return (
     <button
       onClick={onClick}
       style={{
         display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%",
         background: active ? "#FFF4DD" : "transparent", border: "none", borderRadius: 10,
-        padding: "9px 10px", cursor: "pointer", fontFamily: "Nunito, sans-serif",
-        fontWeight: active ? 800 : 700, fontSize: 13.5, color: COLORS.ink, textAlign: "left",
+        padding: "8px 10px", cursor: "pointer", fontFamily: "Nunito, sans-serif", textAlign: "left",
       }}
     >
-      {label}
+      <span>
+        <span style={{ display: "block", fontWeight: active ? 800 : 700, fontSize: 13.5, color: COLORS.ink }}>{label}</span>
+        {sub && <span style={{ display: "block", fontSize: 11, color: "#9A93AF", fontWeight: 700 }}>{sub}</span>}
+      </span>
       {active && <Check size={14} color={COLORS.grass} />}
     </button>
   );
@@ -1123,18 +1342,18 @@ function CommunityCard({ item, categories, onOpen, favorite, onToggleFav }) {
   );
 }
 
-function CommunityExplorer({ title, subtitle, categories, items, favorites, onToggleFav, onOpen, emptyText, city }) {
+function CommunityExplorer({ title, subtitle, categories, items, favorites, onToggleFav, onOpen, emptyText, location }) {
   const [query, setQuery] = useState("");
   const [cat, setCat] = useState("tous");
 
   const filtered = useMemo(() => {
     return items.filter((a) => {
       const matchCat = cat === "tous" || a.category === cat;
-      const matchCity = city === "tous" || a.ville === city;
+      const matchLoc = matchLocation(a.ville, location);
       const matchQuery = a.title.toLowerCase().includes(query.toLowerCase()) || a.lieu.toLowerCase().includes(query.toLowerCase());
-      return matchCat && matchCity && matchQuery;
+      return matchCat && matchLoc && matchQuery;
     });
-  }, [items, query, cat, city]);
+  }, [items, query, cat, location]);
 
   return (
     <div>
@@ -1274,7 +1493,7 @@ export default function RecreApp() {
   const [joinedAdult, setJoinedAdult] = useState([]);
   const [joinedTeen, setJoinedTeen] = useState([]);
   const [selectedCommunity, setSelectedCommunity] = useState(null); // { item, kind: "adult" | "teen" }
-  const [city, setCity] = useState("tous");
+  const [location, setLocation] = useState(null);
 
   const toggleFav = (id) =>
     setFavorites((f) => (f.includes(id) ? f.filter((x) => x !== id) : [...f, id]));
@@ -1366,7 +1585,7 @@ export default function RecreApp() {
               </button>
             ))}
           </div>
-          <CityPicker city={city} onChange={setCity} />
+          <LocationFilter location={location} onChange={setLocation} />
         </div>
       </div>
 
@@ -1374,7 +1593,7 @@ export default function RecreApp() {
         maxWidth: 960, margin: "0 auto", padding: "0 20px 110px",
       }}>
         {tab === "explorer" && parentValidated && (
-          <Explorer activities={activities} favorites={favorites} onToggleFav={toggleFav} onOpen={setSelected} city={city} />
+          <Explorer activities={activities} favorites={favorites} onToggleFav={toggleFav} onOpen={setSelected} location={location} />
         )}
         {tab === "creer" && parentValidated && <CreateActivity onCreate={createActivity} />}
         {tab === "mes-sorties" && parentValidated && <MyOutings joined={joined} activities={activities} />}
@@ -1388,7 +1607,7 @@ export default function RecreApp() {
             onToggleFav={(id) => toggleFavCommunity("adult", id)}
             onOpen={(item) => setSelectedCommunity({ item, kind: "adult" })}
             emptyText="Aucune rencontre ne correspond. Essayez une autre recherche !"
-            city={city}
+            location={location}
           />
         )}
         {tab === "ados" && (
@@ -1401,7 +1620,7 @@ export default function RecreApp() {
             onToggleFav={(id) => toggleFavCommunity("teen", id)}
             onOpen={(item) => setSelectedCommunity({ item, kind: "teen" })}
             emptyText="Aucune rencontre ne correspond. Essayez une autre recherche !"
-            city={city}
+            location={location}
           />
         )}
         {tab === "profil" && (
