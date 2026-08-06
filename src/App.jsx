@@ -9,6 +9,192 @@ import { MapContainer, TileLayer, Marker, Popup, Circle, CircleMarker, useMap } 
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
+// ---------- Internationalisation ----------
+// Langue déduite du navigateur (reflet du pays/de la région de la personne).
+// Ne s'applique qu'à l'interface : les annonces (titre, lieu, description) écrites
+// par les personnes qui proposent une sortie ne sont jamais traduites automatiquement.
+function detectLang() {
+  try {
+    const nav = (typeof navigator !== "undefined" && (navigator.language || (navigator.languages && navigator.languages[0]))) || "fr";
+    const code = nav.slice(0, 2).toLowerCase();
+    if (code === "fr" || code === "es") return code;
+    return "en";
+  } catch (e) {
+    return "fr";
+  }
+}
+const LANG = detectLang();
+
+const TRANSLATIONS = {
+  fr: {
+    tab_enfants: "Enfants", tab_ados: "Ados", tab_adultes: "Adultes", tab_creer: "Créer",
+    tab_mes_sorties: "Mes sorties", tab_profil: "Profil",
+    greeting: "Bonjour {name} 👋",
+    explorer_subtitle: "{n} sortie(s) à partager avec vos enfants près de chez vous",
+    search_placeholder: "Chercher une sortie, un lieu…",
+    search_placeholder_community: "Chercher une rencontre, un lieu…",
+    chip_all: "Toutes", view_liste: "Liste", view_carte: "Carte",
+    empty_kids: "Aucune sortie ne correspond. Essayez une autre recherche !",
+    fav_aria: "Ajouter aux favoris",
+    card_full: "Complet", card_places_left: "{n} place(s) libre(s)",
+    cat_nature: "Nature", cat_creatif: "Créatif", cat_musique: "Musique", cat_jeux: "Jeux", cat_sport: "Sport",
+    cat_cafe: "Café / Brunch", cat_culture: "Sorties culture", cat_bienetre: "Bien-être", cat_jeuxsociete: "Jeux de société",
+    cat_jeuxvideo: "Jeux vidéo", cat_cinema: "Ciné / Sorties",
+    create_title: "Proposer une sortie",
+    create_subtitle: "Partagez une activité, d'autres parents pourront rejoindre avec leurs enfants.",
+    label_titre: "Titre de la sortie", placeholder_titre: "Ex. Balade contée au parc",
+    label_categorie: "Catégorie", label_lieu: "Lieu", placeholder_lieu: "Parc, adresse…",
+    label_date: "Date & heure", placeholder_date: "Sam. 9 août · 10h",
+    label_age: "Âge conseillé", placeholder_age: "Ex. 4-8 ans",
+    label_places: "Places disponibles", label_description: "Description",
+    placeholder_description: "Que va-t-on faire ? Quoi apporter ?",
+    btn_publier: "Publier la sortie",
+    success_message: "Sortie publiée ! Elle apparaît dans l'onglet Explorer.",
+    you_organizer: "Vous",
+    my_title: "Mes sorties",
+    my_subtitle: "Chaque sortie rejointe ajoute un tampon à votre passeport d'aventures.",
+    passport_title: "Passeport d'aventures",
+    passport_empty: "Rejoignez une sortie dans l'onglet Explorer pour gagner votre premier tampon !",
+    profile_outings_count: "{n} sortie(s) rejointe(s)",
+    profile_children: "Mes enfants", profile_add_child: "+ Ajouter un enfant",
+    profile_preferences: "Préférences", profile_years: "ans",
+    val_validated_title: "Identité validée par la mairie",
+    val_validated_text: "Vous avez accès aux sorties enfants : Enfants, Créer une sortie et Mes sorties.",
+    val_pending_title: "Validation de la mairie en attente",
+    val_pending_text: "Pour la sécurité des enfants, l'accès aux sorties enfants (Enfants, Créer, Mes sorties) n'est ouvert qu'aux parents dont l'identité a été vérifiée par la mairie de leur commune. Vous recevrez une notification dès que ce sera fait.",
+    val_demo_on: "Simuler : repasser en attente (démo)", val_demo_off: "Simuler : validation par la mairie (démo)",
+    detail_participants: "{a}/{b} participants · organisé par {org}",
+    detail_registered_children: "Enfants déjà inscrits", legend_girl: "Fille", legend_boy: "Garçon",
+    detail_joined: "Vous participez", detail_join_kids: "Rejoindre avec mon enfant",
+    detail_already_registered: "Déjà inscrit(e)s",
+    community_adult_title: "Rencontres entre parents",
+    community_adult_subtitle: "Des moments entre adultes, sans les enfants, pour se connaître entre parents du quartier.",
+    community_teen_title: "Rencontres entre ados",
+    community_teen_subtitle: "Des activités entre ados, toujours encadrées par une association, une MJC ou un professeur.",
+    community_empty: "Aucune rencontre ne correspond. Essayez une autre recherche !",
+    join_label_adult: "Rejoindre ce moment", join_label_teen: "Rejoindre cette rencontre",
+    loc_placeholder: "Ville, code postal, département…", loc_all_france: "Toute la France",
+    loc_no_result: 'Aucun résultat pour "{q}"', loc_dept: "Département", loc_ville: "Ville",
+    loc_ville_dept: "Ville · dept. {d}", loc_radius_title: "Rayon autour de {ville}",
+    map_centered_on: "Carte centrée sur {loc}", map_empty: "Aucune sortie géolocalisée pour ces filtres.",
+    map_see_detail: "Voir la fiche",
+  },
+  en: {
+    tab_enfants: "Kids", tab_ados: "Teens", tab_adultes: "Adults", tab_creer: "Create",
+    tab_mes_sorties: "My outings", tab_profil: "Profile",
+    greeting: "Hi {name} 👋",
+    explorer_subtitle: "{n} outing(s) to share with your kids near you",
+    search_placeholder: "Search an outing, a place…",
+    search_placeholder_community: "Search a meetup, a place…",
+    chip_all: "All", view_liste: "List", view_carte: "Map",
+    empty_kids: "No outing matches. Try another search!",
+    fav_aria: "Add to favourites",
+    card_full: "Full", card_places_left: "{n} spot(s) left",
+    cat_nature: "Nature", cat_creatif: "Creative", cat_musique: "Music", cat_jeux: "Games", cat_sport: "Sport",
+    cat_cafe: "Coffee / Brunch", cat_culture: "Culture outings", cat_bienetre: "Wellness", cat_jeuxsociete: "Board games",
+    cat_jeuxvideo: "Video games", cat_cinema: "Movies / Outings",
+    create_title: "Propose an outing",
+    create_subtitle: "Share an activity, other parents can join with their kids.",
+    label_titre: "Outing title", placeholder_titre: "E.g. Storytelling walk in the park",
+    label_categorie: "Category", label_lieu: "Location", placeholder_lieu: "Park, address…",
+    label_date: "Date & time", placeholder_date: "Sat. Aug 9 · 10am",
+    label_age: "Recommended age", placeholder_age: "E.g. 4-8 years",
+    label_places: "Available spots", label_description: "Description",
+    placeholder_description: "What will you do? What to bring?",
+    btn_publier: "Publish outing",
+    success_message: "Outing published! It now appears in the Explore tab.",
+    you_organizer: "You",
+    my_title: "My outings",
+    my_subtitle: "Every outing you join adds a stamp to your adventure passport.",
+    passport_title: "Adventure passport",
+    passport_empty: "Join an outing in the Explore tab to earn your first stamp!",
+    profile_outings_count: "{n} outing(s) joined",
+    profile_children: "My kids", profile_add_child: "+ Add a child",
+    profile_preferences: "Preferences", profile_years: "y.o.",
+    val_validated_title: "Identity verified by the town hall",
+    val_validated_text: "You have access to kids outings: Kids, Create an outing and My outings.",
+    val_pending_title: "Town hall verification pending",
+    val_pending_text: "For children's safety, access to kids outings (Kids, Create, My outings) is only open to parents whose identity has been verified by their town hall. You'll be notified as soon as it's done.",
+    val_demo_on: "Simulate: back to pending (demo)", val_demo_off: "Simulate: town hall verification (demo)",
+    detail_participants: "{a}/{b} participants · hosted by {org}",
+    detail_registered_children: "Already registered kids", legend_girl: "Girl", legend_boy: "Boy",
+    detail_joined: "You're in", detail_join_kids: "Join with my child",
+    detail_already_registered: "Already registered",
+    community_adult_title: "Meetups between parents",
+    community_adult_subtitle: "Moments between adults, without the kids, to meet other parents nearby.",
+    community_teen_title: "Meetups between teens",
+    community_teen_subtitle: "Teen activities, always supervised by an association, a youth club or a teacher.",
+    community_empty: "No meetup matches. Try another search!",
+    join_label_adult: "Join this meetup", join_label_teen: "Join this meetup",
+    loc_placeholder: "City, postcode, department…", loc_all_france: "All of France",
+    loc_no_result: 'No result for "{q}"', loc_dept: "Department", loc_ville: "City",
+    loc_ville_dept: "City · dept. {d}", loc_radius_title: "Radius around {ville}",
+    map_centered_on: "Map centred on {loc}", map_empty: "No located outing for these filters.",
+    map_see_detail: "See details",
+  },
+  es: {
+    tab_enfants: "Niños", tab_ados: "Adolescentes", tab_adultes: "Adultos", tab_creer: "Crear",
+    tab_mes_sorties: "Mis salidas", tab_profil: "Perfil",
+    greeting: "Hola {name} 👋",
+    explorer_subtitle: "{n} salida(s) para compartir con tus hijos cerca de ti",
+    search_placeholder: "Buscar una salida, un lugar…",
+    search_placeholder_community: "Buscar un encuentro, un lugar…",
+    chip_all: "Todas", view_liste: "Lista", view_carte: "Mapa",
+    empty_kids: "Ninguna salida coincide. ¡Prueba otra búsqueda!",
+    fav_aria: "Añadir a favoritos",
+    card_full: "Completo", card_places_left: "{n} plaza(s) libre(s)",
+    cat_nature: "Naturaleza", cat_creatif: "Creativo", cat_musique: "Música", cat_jeux: "Juegos", cat_sport: "Deporte",
+    cat_cafe: "Café / Brunch", cat_culture: "Salidas culturales", cat_bienetre: "Bienestar", cat_jeuxsociete: "Juegos de mesa",
+    cat_jeuxvideo: "Videojuegos", cat_cinema: "Cine / Salidas",
+    create_title: "Proponer una salida",
+    create_subtitle: "Comparte una actividad, otros padres podrán unirse con sus hijos.",
+    label_titre: "Título de la salida", placeholder_titre: "Ej. Paseo cuentacuentos en el parque",
+    label_categorie: "Categoría", label_lieu: "Lugar", placeholder_lieu: "Parque, dirección…",
+    label_date: "Fecha y hora", placeholder_date: "Sáb. 9 ago · 10h",
+    label_age: "Edad recomendada", placeholder_age: "Ej. 4-8 años",
+    label_places: "Plazas disponibles", label_description: "Descripción",
+    placeholder_description: "¿Qué vais a hacer? ¿Qué traer?",
+    btn_publier: "Publicar salida",
+    success_message: "¡Salida publicada! Aparece en la pestaña Explorar.",
+    you_organizer: "Tú",
+    my_title: "Mis salidas",
+    my_subtitle: "Cada salida a la que te unes añade un sello a tu pasaporte de aventuras.",
+    passport_title: "Pasaporte de aventuras",
+    passport_empty: "¡Únete a una salida en la pestaña Explorar para ganar tu primer sello!",
+    profile_outings_count: "{n} salida(s) realizadas",
+    profile_children: "Mis hijos", profile_add_child: "+ Añadir un hijo/a",
+    profile_preferences: "Preferencias", profile_years: "años",
+    val_validated_title: "Identidad validada por el ayuntamiento",
+    val_validated_text: "Tienes acceso a las salidas infantiles: Niños, Crear una salida y Mis salidas.",
+    val_pending_title: "Validación del ayuntamiento pendiente",
+    val_pending_text: "Por la seguridad de los niños, el acceso a las salidas infantiles (Niños, Crear, Mis salidas) solo está abierto a los padres cuya identidad haya sido verificada por su ayuntamiento. Recibirás una notificación en cuanto se haga.",
+    val_demo_on: "Simular: volver a pendiente (demo)", val_demo_off: "Simular: validación del ayuntamiento (demo)",
+    detail_participants: "{a}/{b} participantes · organizado por {org}",
+    detail_registered_children: "Niños ya inscritos", legend_girl: "Niña", legend_boy: "Niño",
+    detail_joined: "Estás participando", detail_join_kids: "Unirme con mi hijo/a",
+    detail_already_registered: "Ya inscritos",
+    community_adult_title: "Encuentros entre padres",
+    community_adult_subtitle: "Momentos entre adultos, sin los niños, para conocer a otros padres del barrio.",
+    community_teen_title: "Encuentros entre adolescentes",
+    community_teen_subtitle: "Actividades entre adolescentes, siempre supervisadas por una asociación, un centro juvenil o un profesor.",
+    community_empty: "Ningún encuentro coincide. ¡Prueba otra búsqueda!",
+    join_label_adult: "Unirme a este encuentro", join_label_teen: "Unirme a este encuentro",
+    loc_placeholder: "Ciudad, código postal, departamento…", loc_all_france: "Toda Francia",
+    loc_no_result: 'Sin resultados para "{q}"', loc_dept: "Departamento", loc_ville: "Ciudad",
+    loc_ville_dept: "Ciudad · dpto. {d}", loc_radius_title: "Radio alrededor de {ville}",
+    map_centered_on: "Mapa centrado en {loc}", map_empty: "Ninguna salida geolocalizada para estos filtros.",
+    map_see_detail: "Ver la ficha",
+  },
+};
+
+function t(key, vars) {
+  let str = (TRANSLATIONS[LANG] && TRANSLATIONS[LANG][key]) || TRANSLATIONS.fr[key] || key;
+  if (vars) {
+    Object.entries(vars).forEach(([k, v]) => { str = str.replace(`{${k}}`, v); });
+  }
+  return str;
+}
+
 // ---------- Design tokens ----------
 const COLORS = {
   ink: "#2B2560",
@@ -26,11 +212,11 @@ const genreColor = (genre) => (genre === "F" ? COLORS.girl : COLORS.boy);
 const genreLabel = (genre) => (genre === "F" ? "Fille" : "Garçon");
 
 const CATEGORIES = [
-  { id: "nature", label: "Nature", icon: Trees, color: COLORS.grass },
-  { id: "creatif", label: "Créatif", icon: Palette, color: COLORS.grape },
-  { id: "musique", label: "Musique", icon: Music4, color: COLORS.coral },
-  { id: "jeux", label: "Jeux", icon: Puzzle, color: COLORS.sky },
-  { id: "sport", label: "Sport", icon: Bike, color: COLORS.sun },
+  { id: "nature", label: t("cat_nature"), icon: Trees, color: COLORS.grass },
+  { id: "creatif", label: t("cat_creatif"), icon: Palette, color: COLORS.grape },
+  { id: "musique", label: t("cat_musique"), icon: Music4, color: COLORS.coral },
+  { id: "jeux", label: t("cat_jeux"), icon: Puzzle, color: COLORS.sky },
+  { id: "sport", label: t("cat_sport"), icon: Bike, color: COLORS.sun },
 ];
 
 const catMeta = (id) => CATEGORIES.find((c) => c.id === id) || CATEGORIES[0];
@@ -154,7 +340,7 @@ function matchLocation(villeId, location) {
 }
 
 function locationLabel(location) {
-  if (!location) return "Toute la France";
+  if (!location) return t("loc_all_france");
   if (location.type === "departement") return `${location.nom} (${location.code})`;
   return `${location.nom} · ${location.radius} km`;
 }
@@ -172,19 +358,19 @@ LOCAL_PLACES.forEach((p) => { if (p.dept && !DEPT_LABEL_POINTS[p.dept]) DEPT_LAB
 
 
 const ADULT_CATEGORIES = [
-  { id: "cafe", label: "Café / Brunch", icon: Coffee, color: COLORS.sun },
-  { id: "sport", label: "Sport", icon: Dumbbell, color: COLORS.grass },
-  { id: "culture", label: "Sorties culture", icon: Landmark, color: COLORS.grape },
-  { id: "bienetre", label: "Bien-être", icon: Sparkles, color: COLORS.sky },
-  { id: "jeux", label: "Jeux de société", icon: Puzzle, color: COLORS.coral },
+  { id: "cafe", label: t("cat_cafe"), icon: Coffee, color: COLORS.sun },
+  { id: "sport", label: t("cat_sport"), icon: Dumbbell, color: COLORS.grass },
+  { id: "culture", label: t("cat_culture"), icon: Landmark, color: COLORS.grape },
+  { id: "bienetre", label: t("cat_bienetre"), icon: Sparkles, color: COLORS.sky },
+  { id: "jeux", label: t("cat_jeuxsociete"), icon: Puzzle, color: COLORS.coral },
 ];
 
 const TEEN_CATEGORIES = [
-  { id: "sport", label: "Sport", icon: Dumbbell, color: COLORS.grass },
-  { id: "jeuxvideo", label: "Jeux vidéo", icon: Gamepad2, color: COLORS.grape },
-  { id: "musique", label: "Musique", icon: Music4, color: COLORS.coral },
-  { id: "cinema", label: "Ciné / Sorties", icon: Film, color: COLORS.sky },
-  { id: "creatif", label: "Créatif", icon: Palette, color: COLORS.sun },
+  { id: "sport", label: t("cat_sport"), icon: Dumbbell, color: COLORS.grass },
+  { id: "jeuxvideo", label: t("cat_jeuxvideo"), icon: Gamepad2, color: COLORS.grape },
+  { id: "musique", label: t("cat_musique"), icon: Music4, color: COLORS.coral },
+  { id: "cinema", label: t("cat_cinema"), icon: Film, color: COLORS.sky },
+  { id: "creatif", label: t("cat_creatif"), icon: Palette, color: COLORS.sun },
 ];
 
 const metaFrom = (categories, id) => categories.find((c) => c.id === id) || categories[0];
@@ -589,7 +775,7 @@ function ActivityCard({ activity, onOpen, favorite, onToggleFav }) {
           position: "absolute", top: 14, right: 14, background: "transparent",
           border: "none", cursor: "pointer", padding: 4,
         }}
-        aria-label="Ajouter aux favoris"
+        aria-label={t("fav_aria")}
       >
         <Heart
           size={20}
@@ -638,7 +824,7 @@ function ActivityCard({ activity, onOpen, favorite, onToggleFav }) {
               color: full ? COLORS.coral : COLORS.ink,
             }}
           >
-            {full ? "Complet" : `${activity.places - activity.inscrits} place(s) libre(s)`}
+            {full ? t("card_full") : t("card_places_left", { n: activity.places - activity.inscrits })}
           </span>
         </div>
         <ChevronRight size={18} color="#C7C0AE" />
@@ -761,7 +947,7 @@ function MapView({ items, categories, onOpen, location }) {
                       padding: "7px 8px", cursor: "pointer",
                     }}
                   >
-                    Voir la fiche
+                    {t("map_see_detail")}
                   </button>
                 </div>
               </Popup>
@@ -772,13 +958,13 @@ function MapView({ items, categories, onOpen, location }) {
 
       {location && (
         <div style={{ marginTop: 10, fontFamily: "Nunito, sans-serif", fontSize: 12, color: "#9A93AF", textAlign: "center" }}>
-          Carte centrée sur {locationLabel(location)}
+          {t("map_centered_on", { loc: locationLabel(location) })}
         </div>
       )}
 
       {points.length === 0 && (
         <div style={{ textAlign: "center", padding: "10px 0 4px", color: "#9A93AF", fontFamily: "Nunito, sans-serif", fontSize: 13.5 }}>
-          Aucune sortie géolocalisée pour ces filtres.
+          {t("map_empty")}
         </div>
       )}
     </div>
@@ -829,8 +1015,8 @@ function ViewToggle({ view, onChange }) {
   );
   return (
     <div style={{ display: "inline-flex", background: "#F0EADB", borderRadius: 14, padding: 4, marginBottom: 16 }}>
-      {opt("liste", List, "Liste")}
-      {opt("carte", Map, "Carte")}
+      {opt("liste", List, t("view_liste"))}
+      {opt("carte", Map, t("view_carte"))}
     </div>
   );
 }
@@ -854,10 +1040,10 @@ function Explorer({ activities, favorites, onToggleFav, onOpen, location }) {
     <div>
       <div style={{ padding: "4px 4px 14px" }}>
         <h1 style={{ fontFamily: "Fredoka, sans-serif", fontWeight: 600, fontSize: 26, color: COLORS.ink, margin: "0 0 4px" }}>
-          Bonjour Sarah 👋
+          {t("greeting", { name: "Sarah" })}
         </h1>
         <p style={{ fontFamily: "Nunito, sans-serif", color: "#6B6485", fontSize: 14.5, margin: 0 }}>
-          {filtered.length} sortie(s) à partager avec vos enfants près de chez vous
+          {t("explorer_subtitle", { n: filtered.length })}
         </p>
       </div>
 
@@ -869,7 +1055,7 @@ function Explorer({ activities, favorites, onToggleFav, onOpen, location }) {
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Chercher une sortie, un lieu…"
+          placeholder={t("search_placeholder")}
           style={{
             border: "none", outline: "none", fontFamily: "Nunito, sans-serif",
             fontSize: 14.5, flex: 1, background: "transparent", color: COLORS.ink,
@@ -879,7 +1065,7 @@ function Explorer({ activities, favorites, onToggleFav, onOpen, location }) {
 
       <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 6, marginBottom: 10 }}>
         <Chip active={cat === "tous"} onClick={() => setCat("tous")} color={COLORS.ink}>
-          Toutes
+          {t("chip_all")}
         </Chip>
         {CATEGORIES.map((c) => (
           <Chip key={c.id} active={cat === c.id} onClick={() => setCat(c.id)} color={c.color}>
@@ -905,7 +1091,7 @@ function Explorer({ activities, favorites, onToggleFav, onOpen, location }) {
           ))}
           {filtered.length === 0 && (
             <div style={{ gridColumn: "1/-1", textAlign: "center", padding: "40px 0", color: "#9A93AF", fontFamily: "Nunito, sans-serif" }}>
-              Aucune sortie ne correspond. Essayez une autre recherche !
+              {t("empty_kids")}
             </div>
           )}
         </div>
@@ -924,7 +1110,7 @@ function CreateActivity({ onCreate }) {
 
   const submit = () => {
     if (!form.title || !form.lieu || !form.date) return;
-    onCreate({ ...form, id: Date.now(), inscrits: 1, organisateur: "Vous", places: Number(form.places) || 1 });
+    onCreate({ ...form, id: Date.now(), inscrits: 1, organisateur: t("you_organizer"), places: Number(form.places) || 1 });
     setSent(true);
     setTimeout(() => setSent(false), 2200);
     setForm({ title: "", category: "nature", lieu: "", date: "", age: "", places: 6, desc: "" });
@@ -940,20 +1126,20 @@ function CreateActivity({ onCreate }) {
   return (
     <div style={{ maxWidth: 560, margin: "0 auto" }}>
       <h1 style={{ fontFamily: "Fredoka, sans-serif", fontWeight: 600, fontSize: 24, color: COLORS.ink, margin: "4px 0 4px" }}>
-        Proposer une sortie
+        {t("create_title")}
       </h1>
       <p style={{ fontFamily: "Nunito, sans-serif", color: "#6B6485", fontSize: 14, margin: "0 0 18px" }}>
-        Partagez une activité, d'autres parents pourront rejoindre avec leurs enfants.
+        {t("create_subtitle")}
       </p>
 
       <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
         <div>
-          <label style={label}>Titre de la sortie</label>
-          <input style={inputStyle} placeholder="Ex. Balade contée au parc" value={form.title} onChange={set("title")} />
+          <label style={label}>{t("label_titre")}</label>
+          <input style={inputStyle} placeholder={t("placeholder_titre")} value={form.title} onChange={set("title")} />
         </div>
 
         <div>
-          <label style={label}>Catégorie</label>
+          <label style={label}>{t("label_categorie")}</label>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             {CATEGORIES.map((c) => (
               <Chip key={c.id} active={form.category === c.id} onClick={() => setForm({ ...form, category: c.id })} color={c.color}>
@@ -965,35 +1151,35 @@ function CreateActivity({ onCreate }) {
 
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
           <div>
-            <label style={label}>Lieu</label>
-            <input style={inputStyle} placeholder="Parc, adresse…" value={form.lieu} onChange={set("lieu")} />
+            <label style={label}>{t("label_lieu")}</label>
+            <input style={inputStyle} placeholder={t("placeholder_lieu")} value={form.lieu} onChange={set("lieu")} />
           </div>
           <div>
-            <label style={label}>Date & heure</label>
-            <input style={inputStyle} placeholder="Sam. 9 août · 10h" value={form.date} onChange={set("date")} />
+            <label style={label}>{t("label_date")}</label>
+            <input style={inputStyle} placeholder={t("placeholder_date")} value={form.date} onChange={set("date")} />
           </div>
         </div>
 
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
           <div>
-            <label style={label}>Âge conseillé</label>
-            <input style={inputStyle} placeholder="Ex. 4-8 ans" value={form.age} onChange={set("age")} />
+            <label style={label}>{t("label_age")}</label>
+            <input style={inputStyle} placeholder={t("placeholder_age")} value={form.age} onChange={set("age")} />
           </div>
           <div>
-            <label style={label}>Places disponibles</label>
+            <label style={label}>{t("label_places")}</label>
             <input type="number" min={1} style={inputStyle} value={form.places} onChange={set("places")} />
           </div>
         </div>
 
         <div>
-          <label style={label}>Description</label>
+          <label style={label}>{t("label_description")}</label>
           <textarea rows={3} style={{ ...inputStyle, resize: "vertical", fontFamily: "Nunito, sans-serif" }}
-            placeholder="Que va-t-on faire ? Quoi apporter ?" value={form.desc} onChange={set("desc")} />
+            placeholder={t("placeholder_description")} value={form.desc} onChange={set("desc")} />
         </div>
 
         <PillButton color={COLORS.grass} textColor="#fff" onClick={submit} style={{ marginTop: 6 }}>
           <span style={{ display: "flex", alignItems: "center", gap: 8, justifyContent: "center" }}>
-            <PlusCircle size={18} /> Publier la sortie
+            <PlusCircle size={18} /> {t("btn_publier")}
           </span>
         </PillButton>
 
@@ -1003,7 +1189,7 @@ function CreateActivity({ onCreate }) {
             color: COLORS.grass, fontFamily: "Nunito, sans-serif", fontWeight: 800,
             fontSize: 13.5, padding: "10px 14px", borderRadius: 12,
           }}>
-            <Check size={16} /> Sortie publiée ! Elle apparaît dans l'onglet Explorer.
+            <Check size={16} /> {t("success_message")}
           </div>
         )}
       </div>
@@ -1016,10 +1202,10 @@ function MyOutings({ joined, activities }) {
   return (
     <div>
       <h1 style={{ fontFamily: "Fredoka, sans-serif", fontWeight: 600, fontSize: 24, color: COLORS.ink, margin: "4px 0 4px" }}>
-        Mes sorties
+        {t("my_title")}
       </h1>
       <p style={{ fontFamily: "Nunito, sans-serif", color: "#6B6485", fontSize: 14, margin: "0 0 18px" }}>
-        Chaque sortie rejointe ajoute un tampon à votre passeport d'aventures.
+        {t("my_subtitle")}
       </p>
 
       <div style={{
@@ -1028,12 +1214,12 @@ function MyOutings({ joined, activities }) {
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
           <Sparkles size={18} color={COLORS.sun} />
           <span style={{ fontFamily: "Fredoka, sans-serif", fontWeight: 600, fontSize: 16, color: COLORS.ink }}>
-            Passeport d'aventures
+            {t("passport_title")}
           </span>
         </div>
         {myActivities.length === 0 ? (
           <p style={{ fontFamily: "Nunito, sans-serif", color: "#9A93AF", fontSize: 14 }}>
-            Rejoignez une sortie dans l'onglet Explorer pour gagner votre premier tampon !
+            {t("passport_empty")}
           </p>
         ) : (
           <div style={{ display: "flex", flexWrap: "wrap", gap: 14 }}>
@@ -1080,13 +1266,13 @@ function Profile({ joinedCount, validated, onToggleDemo }) {
         </div>
         <div>
           <div style={{ fontFamily: "Fredoka, sans-serif", fontWeight: 600, fontSize: 20, color: COLORS.ink }}>Sarah Bertrand</div>
-          <div style={{ fontFamily: "Nunito, sans-serif", fontSize: 13, color: "#6B6485" }}>{joinedCount} sortie(s) rejointe(s)</div>
+          <div style={{ fontFamily: "Nunito, sans-serif", fontSize: 13, color: "#6B6485" }}>{t("profile_outings_count", { n: joinedCount })}</div>
         </div>
       </div>
 
       <ValidationStatus validated={validated} onToggleDemo={onToggleDemo} />
 
-      <SectionLabel>Mes enfants</SectionLabel>
+      <SectionLabel>{t("profile_children")}</SectionLabel>
       <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 22 }}>
         {KIDS.map((k) => (
           <div key={k.name} style={{
@@ -1101,7 +1287,7 @@ function Profile({ joinedCount, validated, onToggleDemo }) {
             </div>
             <div style={{ fontFamily: "Nunito, sans-serif" }}>
               <div style={{ fontWeight: 800, fontSize: 14.5, color: COLORS.ink }}>{k.name}</div>
-              <div style={{ fontSize: 12.5, color: "#6B6485" }}>{k.age} ans</div>
+              <div style={{ fontSize: 12.5, color: "#6B6485" }}>{k.age} {t("profile_years")}</div>
             </div>
           </div>
         ))}
@@ -1109,11 +1295,11 @@ function Profile({ joinedCount, validated, onToggleDemo }) {
           border: `2px dashed #D8D2C2`, background: "transparent", borderRadius: 16, padding: "12px 16px",
           fontFamily: "Nunito, sans-serif", fontWeight: 800, color: "#9A93AF", cursor: "pointer", fontSize: 13.5,
         }}>
-          + Ajouter un enfant
+          {t("profile_add_child")}
         </button>
       </div>
 
-      <SectionLabel>Préférences</SectionLabel>
+      <SectionLabel>{t("profile_preferences")}</SectionLabel>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
         {CATEGORIES.map((c) => (
           <span key={c.id} style={{
@@ -1145,12 +1331,10 @@ function ValidationStatus({ validated, onToggleDemo }) {
         </div>
         <div style={{ flex: 1 }}>
           <div style={{ fontFamily: "Fredoka, sans-serif", fontWeight: 600, fontSize: 15.5, color: COLORS.ink, marginBottom: 4 }}>
-            {validated ? "Identité validée par la mairie" : "Validation de la mairie en attente"}
+            {validated ? t("val_validated_title") : t("val_pending_title")}
           </div>
           <p style={{ fontFamily: "Nunito, sans-serif", fontSize: 13, color: "#5C5578", lineHeight: 1.5, margin: 0 }}>
-            {validated
-              ? "Vous avez accès aux sorties enfants : Enfants, Créer une sortie et Mes sorties."
-              : "Pour la sécurité des enfants, l'accès aux sorties enfants (Enfants, Créer, Mes sorties) n'est ouvert qu'aux parents dont l'identité a été vérifiée par la mairie de leur commune. Vous recevrez une notification dès que ce sera fait."}
+            {validated ? t("val_validated_text") : t("val_pending_text")}
           </p>
           {onToggleDemo && (
             <button
@@ -1161,7 +1345,7 @@ function ValidationStatus({ validated, onToggleDemo }) {
                 borderRadius: 10, padding: "6px 12px", cursor: "pointer",
               }}
             >
-              {validated ? "Simuler : repasser en attente (démo)" : "Simuler : validation par la mairie (démo)"}
+              {validated ? t("val_demo_on") : t("val_demo_off")}
             </button>
           )}
         </div>
@@ -1285,7 +1469,7 @@ function LocationFilter({ location, onChange }) {
               autoFocus
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Ville, code postal, département…"
+              placeholder={t("loc_placeholder")}
               style={{
                 width: "100%", border: "2px solid #F0EADB", borderRadius: 12, padding: "9px 12px",
                 fontFamily: "Nunito, sans-serif", fontSize: 13.5, outline: "none", boxSizing: "border-box",
@@ -1293,23 +1477,23 @@ function LocationFilter({ location, onChange }) {
               }}
             />
 
-            <CityOption label="Toute la France" active={!location} onClick={() => { onChange(null); setQuery(""); setOpen(false); }} />
+            <CityOption label={t("loc_all_france")} active={!location} onClick={() => { onChange(null); setQuery(""); setOpen(false); }} />
 
             {query.trim().length > 0 && (
               <div style={{ maxHeight: 220, overflowY: "auto" }}>
                 {deptSuggestions.map((d) => (
-                  <CityOption key={d.code} label={`${d.nom} (${d.code})`} sub="Département"
+                  <CityOption key={d.code} label={`${d.nom} (${d.code})`} sub={t("loc_dept")}
                     active={location?.type === "departement" && location.code === d.code}
                     onClick={() => pickDept(d)} />
                 ))}
                 {communeSuggestions.map((p, i) => (
-                  <CityOption key={p.nom + i} label={p.nom} sub={p.dept ? `Ville · dept. ${p.dept}` : "Ville"}
+                  <CityOption key={p.nom + i} label={p.nom} sub={p.dept ? t("loc_ville_dept", { d: p.dept }) : t("loc_ville")}
                     active={location?.type === "commune" && location.nom === p.nom}
                     onClick={() => pickCommune(p)} />
                 ))}
                 {deptSuggestions.length === 0 && communeSuggestions.length === 0 && (
                   <div style={{ fontFamily: "Nunito, sans-serif", fontSize: 12.5, color: "#9A93AF", padding: "8px 6px" }}>
-                    Aucun résultat pour "{query}"
+                    {t("loc_no_result", { q: query })}
                   </div>
                 )}
               </div>
@@ -1318,7 +1502,7 @@ function LocationFilter({ location, onChange }) {
             {location?.type === "commune" && (
               <div style={{ marginTop: 10, paddingTop: 10, borderTop: "1px solid #F0EADB" }}>
                 <div style={{ fontFamily: "Nunito, sans-serif", fontWeight: 800, fontSize: 11, color: "#9A93AF", marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.4 }}>
-                  Rayon autour de {location.nom}
+                  {t("loc_radius_title", { ville: location.nom })}
                 </div>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                   {[0, 1, 5, 10, 25, 50, 100].map((km) => (
@@ -1406,7 +1590,7 @@ function DetailModal({ activity, onClose, joined, onJoin }) {
         <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16 }}>
           <Row icon={<MapPin size={15} color={COLORS.ink} />} text={lieuAvecVille(activity)} />
           <Row icon={<CalendarDays size={15} color={COLORS.ink} />} text={activity.date} />
-          <Row icon={<Users size={15} color={COLORS.ink} />} text={`${activity.inscrits}/${activity.places} participants · organisé par ${activity.organisateur}`} />
+          <Row icon={<Users size={15} color={COLORS.ink} />} text={t("detail_participants", { a: activity.inscrits, b: activity.places, org: activity.organisateur })} />
         </div>
 
         <p style={{ fontFamily: "Nunito, sans-serif", fontSize: 14.5, color: "#5C5578", lineHeight: 1.6, marginBottom: 20 }}>
@@ -1416,10 +1600,10 @@ function DetailModal({ activity, onClose, joined, onJoin }) {
         {activity.participants && activity.participants.length > 0 && (
           <div style={{ marginBottom: 20 }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-              <SectionLabel>Enfants déjà inscrits</SectionLabel>
+              <SectionLabel>{t("detail_registered_children")}</SectionLabel>
               <div style={{ display: "flex", gap: 12 }}>
-                <Legend color={COLORS.girl} label="Fille" />
-                <Legend color={COLORS.boy} label="Garçon" />
+                <Legend color={COLORS.girl} label={t("legend_girl")} />
+                <Legend color={COLORS.boy} label={t("legend_boy")} />
               </div>
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -1438,7 +1622,7 @@ function DetailModal({ activity, onClose, joined, onJoin }) {
         {isJoined ? (
           <PillButton color={"#EAF8ED"} textColor={COLORS.grass} style={{ width: "100%", boxShadow: "none" }}>
             <span style={{ display: "flex", alignItems: "center", gap: 8, justifyContent: "center" }}>
-              <Check size={18} /> Vous participez
+              <Check size={18} /> {t("detail_joined")}
             </span>
           </PillButton>
         ) : (
@@ -1448,7 +1632,7 @@ function DetailModal({ activity, onClose, joined, onJoin }) {
             onClick={() => !full && onJoin(activity.id)}
             style={{ width: "100%" }}
           >
-            {full ? "Complet" : "Rejoindre avec mon enfant"}
+            {full ? t("card_full") : t("detail_join_kids")}
           </PillButton>
         )}
       </div>
@@ -1481,7 +1665,7 @@ function CommunityCard({ item, categories, onOpen, favorite, onToggleFav }) {
       <button
         onClick={(e) => { e.stopPropagation(); onToggleFav(item.id); }}
         style={{ position: "absolute", top: 14, right: 14, background: "transparent", border: "none", cursor: "pointer", padding: 4 }}
-        aria-label="Ajouter aux favoris"
+        aria-label={t("fav_aria")}
       >
         <Heart size={20} color={favorite ? COLORS.coral : "#D8D2C2"} fill={favorite ? COLORS.coral : "none"} strokeWidth={2.2} />
       </button>
@@ -1519,7 +1703,7 @@ function CommunityCard({ item, categories, onOpen, favorite, onToggleFav }) {
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
           <Users size={14} color={full ? COLORS.coral : COLORS.grass} />
           <span style={{ fontFamily: "Nunito, sans-serif", fontWeight: 800, fontSize: 12.5, color: full ? COLORS.coral : COLORS.ink }}>
-            {full ? "Complet" : `${item.places - item.inscrits} place(s) libre(s)`}
+            {full ? t("card_full") : t("card_places_left", { n: item.places - item.inscrits })}
           </span>
         </div>
         <ChevronRight size={18} color="#C7C0AE" />
@@ -1561,13 +1745,13 @@ function CommunityExplorer({ title, subtitle, categories, items, favorites, onTo
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Chercher une rencontre, un lieu…"
+          placeholder={t("search_placeholder_community")}
           style={{ border: "none", outline: "none", fontFamily: "Nunito, sans-serif", fontSize: 14.5, flex: 1, background: "transparent", color: COLORS.ink }}
         />
       </div>
 
       <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 6, marginBottom: 10 }}>
-        <Chip active={cat === "tous"} onClick={() => setCat("tous")} color={COLORS.ink}>Toutes</Chip>
+        <Chip active={cat === "tous"} onClick={() => setCat("tous")} color={COLORS.ink}>{t("chip_all")}</Chip>
         {categories.map((c) => (
           <Chip key={c.id} active={cat === c.id} onClick={() => setCat(c.id)} color={c.color}>{c.label}</Chip>
         ))}
@@ -1627,7 +1811,7 @@ function CommunityDetailModal({ item, categories, onClose, joined, onJoin, joinL
         <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16 }}>
           <Row icon={<MapPin size={15} color={COLORS.ink} />} text={lieuAvecVille(item)} />
           <Row icon={<CalendarDays size={15} color={COLORS.ink} />} text={item.date} />
-          <Row icon={<Users size={15} color={COLORS.ink} />} text={`${item.inscrits}/${item.places} participants · organisé par ${item.organisateur}`} />
+          <Row icon={<Users size={15} color={COLORS.ink} />} text={t("detail_participants", { a: item.inscrits, b: item.places, org: item.organisateur })} />
           {item.info && <Row icon={<Sparkles size={15} color={COLORS.ink} />} text={item.info} />}
         </div>
 
@@ -1637,7 +1821,7 @@ function CommunityDetailModal({ item, categories, onClose, joined, onJoin, joinL
 
         {item.participants && item.participants.length > 0 && (
           <div style={{ marginBottom: 20 }}>
-            <SectionLabel>Déjà inscrit(e)s</SectionLabel>
+            <SectionLabel>{t("detail_already_registered")}</SectionLabel>
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {item.participants.map((n, i) => (
                 <div key={i} style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -1652,7 +1836,7 @@ function CommunityDetailModal({ item, categories, onClose, joined, onJoin, joinL
         {isJoined ? (
           <PillButton color={"#EAF8ED"} textColor={COLORS.grass} style={{ width: "100%", boxShadow: "none" }}>
             <span style={{ display: "flex", alignItems: "center", gap: 8, justifyContent: "center" }}>
-              <Check size={18} /> Vous participez
+              <Check size={18} /> {t("detail_joined")}
             </span>
           </PillButton>
         ) : (
@@ -1662,7 +1846,7 @@ function CommunityDetailModal({ item, categories, onClose, joined, onJoin, joinL
             onClick={() => !full && onJoin(item.id)}
             style={{ width: "100%" }}
           >
-            {full ? "Complet" : joinLabel}
+            {full ? t("card_full") : joinLabel}
           </PillButton>
         )}
       </div>
@@ -1718,18 +1902,18 @@ export default function RecreApp() {
   };
 
   const TABS_ALL = [
-    { id: "explorer", label: "Enfants", icon: Compass, kidsOnly: true },
-    { id: "ados", label: "Ados", icon: Gamepad2 },
-    { id: "adultes", label: "Adultes", icon: Coffee },
-    { id: "creer", label: "Créer", icon: PlusCircle, kidsOnly: true },
-    { id: "mes-sorties", label: "Mes sorties", icon: BookMarked, kidsOnly: true },
-    { id: "profil", label: "Profil", icon: UserCircle2 },
+    { id: "explorer", label: t("tab_enfants"), icon: Compass, kidsOnly: true },
+    { id: "ados", label: t("tab_ados"), icon: Gamepad2 },
+    { id: "adultes", label: t("tab_adultes"), icon: Coffee },
+    { id: "creer", label: t("tab_creer"), icon: PlusCircle, kidsOnly: true },
+    { id: "mes-sorties", label: t("tab_mes_sorties"), icon: BookMarked, kidsOnly: true },
+    { id: "profil", label: t("tab_profil"), icon: UserCircle2 },
   ];
-  const TABS = TABS_ALL.filter((t) => !t.kidsOnly || parentValidated);
+  const TABS = TABS_ALL.filter((tb) => !tb.kidsOnly || parentValidated);
 
   // Si le parent n'est plus validé (démo) alors qu'il est sur un onglet enfants, on le repositionne
   useEffect(() => {
-    const stillVisible = TABS.some((t) => t.id === tab);
+    const stillVisible = TABS.some((tb) => tb.id === tab);
     if (!stillVisible) setTab("profil");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [parentValidated]);
@@ -1763,18 +1947,18 @@ export default function RecreApp() {
         {/* Desktop nav + sélecteur de ville */}
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <div className="desktop-nav" style={{ display: "none", gap: 6 }}>
-            {TABS.map((t) => (
+            {TABS.map((tb) => (
               <button
-                key={t.id}
-                onClick={() => setTab(t.id)}
+                key={tb.id}
+                onClick={() => setTab(tb.id)}
                 style={{
                   display: "flex", alignItems: "center", gap: 6, border: "none", cursor: "pointer",
-                  background: tab === t.id ? COLORS.ink : "transparent",
-                  color: tab === t.id ? "#fff" : COLORS.ink,
+                  background: tab === tb.id ? COLORS.ink : "transparent",
+                  color: tab === tb.id ? "#fff" : COLORS.ink,
                   padding: "9px 16px", borderRadius: 12, fontFamily: "Fredoka, sans-serif", fontWeight: 600, fontSize: 14.5,
                 }}
               >
-                <t.icon size={16} /> {t.label}
+                <tb.icon size={16} /> {tb.label}
               </button>
             ))}
           </div>
@@ -1792,27 +1976,27 @@ export default function RecreApp() {
         {tab === "mes-sorties" && parentValidated && <MyOutings joined={joined} activities={activities} />}
         {tab === "adultes" && (
           <CommunityExplorer
-            title="Rencontres entre parents"
-            subtitle="Des moments entre adultes, sans les enfants, pour se connaître entre parents du quartier."
+            title={t("community_adult_title")}
+            subtitle={t("community_adult_subtitle")}
             categories={ADULT_CATEGORIES}
             items={adultItems}
             favorites={favAdult}
             onToggleFav={(id) => toggleFavCommunity("adult", id)}
             onOpen={(item) => setSelectedCommunity({ item, kind: "adult" })}
-            emptyText="Aucune rencontre ne correspond. Essayez une autre recherche !"
+            emptyText={t("community_empty")}
             location={location}
           />
         )}
         {tab === "ados" && (
           <CommunityExplorer
-            title="Rencontres entre ados"
-            subtitle="Des activités entre ados, toujours encadrées par une association, une MJC ou un professeur."
+            title={t("community_teen_title")}
+            subtitle={t("community_teen_subtitle")}
             categories={TEEN_CATEGORIES}
             items={teenItems}
             favorites={favTeen}
             onToggleFav={(id) => toggleFavCommunity("teen", id)}
             onOpen={(item) => setSelectedCommunity({ item, kind: "teen" })}
-            emptyText="Aucune rencontre ne correspond. Essayez une autre recherche !"
+            emptyText={t("community_empty")}
             location={location}
           />
         )}
@@ -1865,7 +2049,7 @@ export default function RecreApp() {
         onClose={() => setSelectedCommunity(null)}
         joined={selectedCommunity?.kind === "teen" ? joinedTeen : joinedAdult}
         onJoin={(id) => joinCommunity(selectedCommunity?.kind, id)}
-        joinLabel={selectedCommunity?.kind === "teen" ? "Rejoindre cette rencontre" : "Rejoindre ce moment"}
+        joinLabel={selectedCommunity?.kind === "teen" ? t("join_label_teen") : t("join_label_adult")}
       />
 
       <style>{`
